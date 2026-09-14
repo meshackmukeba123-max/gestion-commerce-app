@@ -214,6 +214,19 @@ l'intégration Vercel Marketplace :
   avec `npm run db:seed`.
 - Chaque push sur la branche `main` du dépôt GitHub redéploie automatiquement l'application
   (intégration GitHub ↔ Vercel connectée à la création du projet).
+- **La base de développement est séparée de la production** : une branche Neon dédiée
+  (`development`, créée avec `neonctl branches create`) est utilisée en local — c'est une copie
+  indépendante des données, donc tester/développer en local ne touche jamais aux vraies données
+  de production. L'environnement Vercel « Development » pointe vers cette même branche ; les
+  environnements « Production » et « Preview » restent sur la branche `main` de Neon.
+
+  Pour recréer une branche de dev si besoin :
+  ```bash
+  npx neonctl auth
+  npx neonctl branches create --project-id lingering-frog-30890396 --name development --parent main
+  # puis mettre à jour DATABASE_URL dans .env / .env.local et dans
+  # l'environnement "Development" du projet Vercel (vercel env add DATABASE_URL development)
+  ```
 
 ### Reproduire ce déploiement pour un autre projet / une autre boutique
 
