@@ -48,7 +48,7 @@ la logique métier — plus simple à maintenir seul qu'un backend Express sépa
 | Domaine | Technologie |
 |---|---|
 | Framework web + API | Next.js 16 (App Router, TypeScript) |
-| Base de données | SQLite en local (zéro configuration) — PostgreSQL recommandé en production, via Prisma ORM |
+| Base de données | PostgreSQL (hébergé sur [Neon](https://neon.tech), connecté via l'intégration Vercel Marketplace), via Prisma ORM |
 | Authentification | JWT (cookies httpOnly), mots de passe hachés avec bcrypt |
 | Interface | React 19, Tailwind CSS |
 | Graphiques | Recharts |
@@ -88,8 +88,10 @@ Copiez le fichier d'exemple :
 cp .env.example .env
 ```
 
-Le fichier `.env` par défaut fonctionne tel quel pour un essai local (base de données SQLite
-créée automatiquement). Changez au minimum `JWT_SECRET` avant toute mise en production réelle.
+Renseignez `DATABASE_URL` avec une base PostgreSQL (voir [Neon](https://neon.tech), gratuit) et
+changez `JWT_SECRET` avant toute mise en production réelle. En développement, si le projet est
+lié à Vercel (`vercel link` puis `vercel env pull`), un fichier `.env.local` avec une base Neon
+déjà prête est généré automatiquement.
 
 ### 3. Créer la base de données et charger des données d'exemple
 
@@ -201,28 +203,32 @@ ou Excel pour la déclaration fiscale. Adaptez le taux et la logique dans
 
 ## Déploiement en production
 
-### Passer de SQLite à PostgreSQL
+Ce projet est déjà déployé sur Vercel, avec une base PostgreSQL Neon connectée via
+l'intégration Vercel Marketplace :
 
-1. Créez une base PostgreSQL gratuite (ex. [Neon](https://neon.tech),
-   [Supabase](https://supabase.com) ou [Railway](https://railway.app)).
-2. Dans `prisma/schema.prisma`, changez :
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-3. Mettez à jour `DATABASE_URL` dans vos variables d'environnement de production avec l'URL de
-   connexion PostgreSQL fournie par votre hébergeur.
-4. Exécutez `npx prisma db push` puis `npm run db:seed` (optionnel, pour des données d'exemple).
+- Dépôt GitHub : https://github.com/meshackmukeba123-max/gestion-commerce-app
+- La base Neon a été provisionnée avec `vercel install neon`, ce qui a automatiquement rempli
+  `DATABASE_URL` (et variantes `POSTGRES_*`) dans les variables d'environnement Vercel
+  (Production, Preview, Development).
+- Le schéma a été appliqué avec `npx prisma db push`, et les données de démonstration chargées
+  avec `npm run db:seed`.
+- Chaque push sur la branche `main` du dépôt GitHub redéploie automatiquement l'application
+  (intégration GitHub ↔ Vercel connectée à la création du projet).
 
-### Déployer sur Vercel (recommandé, le plus simple avec Next.js)
+### Reproduire ce déploiement pour un autre projet / une autre boutique
 
-1. Poussez le projet sur GitHub.
-2. Importez le dépôt sur [vercel.com](https://vercel.com).
-3. Renseignez les variables d'environnement (`DATABASE_URL`, `JWT_SECRET`, clés mobile money) dans
-   les paramètres du projet Vercel.
-4. Déployez. Vercel exécute `npm run build` automatiquement.
+1. `vercel link` — connecte le dossier local à un projet Vercel (le crée si besoin).
+2. `vercel install neon` — provisionne une base PostgreSQL Neon et remplit automatiquement les
+   variables d'environnement du projet.
+3. `npx prisma db push` puis `npm run db:seed` (optionnel) pour préparer les tables.
+4. `vercel deploy --prod` — ou simplement `git push` si le dépôt GitHub est connecté au projet
+   Vercel.
+
+### Autres fournisseurs PostgreSQL
+
+Sans passer par Vercel Marketplace, toute base PostgreSQL convient : créez-en une sur
+[Neon](https://neon.tech), [Supabase](https://supabase.com) ou [Railway](https://railway.app),
+puis renseignez son URL de connexion dans `DATABASE_URL`.
 
 ### Autres hébergeurs (Railway, Render, AWS, etc.)
 

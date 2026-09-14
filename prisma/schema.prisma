@@ -1,14 +1,14 @@
 // Schema de base de données pour l'application de gestion commerçant.
-// Par défaut : SQLite (aucune installation de serveur requise, fichier local dev.db).
-// Pour la production, changez le provider en "postgresql" et DATABASE_URL dans .env
-// (voir README.md section "Déploiement / Passer à PostgreSQL").
+// PostgreSQL (hébergé sur Neon, connecté via l'intégration Vercel Marketplace).
+// En développement local, DATABASE_URL pointe vers la branche Neon "development"
+// (voir .env.local, généré par `vercel install neon` / `vercel env pull`).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

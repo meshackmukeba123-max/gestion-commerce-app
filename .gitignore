@@ -32,11 +32,17 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
 
-# base de données SQLite locale
+# agent skills installed by `vercel install` (reference docs, not app code)
+/.agents
+/.claude/skills
+skills-lock.json
+
+# base de données SQLite locale (héritage — le projet utilise PostgreSQL en développement comme en production)
 /prisma/*.db
 /prisma/*.db-journal
 
