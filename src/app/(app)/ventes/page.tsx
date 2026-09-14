@@ -70,6 +70,20 @@ export default function VentesPage() {
   const taxAmount = Math.round(((subtotal * taxRate) / 100) * 100) / 100;
   const total = subtotal + taxAmount;
 
+  /** Interroge le statut d'une transaction mobile money (paiement asynchrone type STK Push M-Pesa). */
+  async function pollMobileMoneyStatus(transactionId: string): Promise<"REUSSI" | "ECHEC"> {
+    const maxAttempts = 30; // ~60s
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const res = await apiGet<{ status: "EN_ATTENTE" | "REUSSI" | "ECHEC" }>(
+        `/api/payments/mobile-money/status/${transactionId}`
+      );
+      if (res.status !== "EN_ATTENTE") return res.status;
+      setMessage({ type: "info", text: `En attente de confirmation sur le téléphone du client… (${attempt + 1}/${maxAttempts})` });
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    return "ECHEC";
+  }
+
   async function checkout() {
     if (cart.length === 0) return;
     setMessage(null);
@@ -90,16 +104,26 @@ export default function VentesPage() {
           setProcessing(false);
           return;
         }
-        const charge = await apiPost<{ transaction: { status: string }; message: string }>("/api/payments/mobile-money", {
-          storeId: activeStore.storeId,
-          provider: mmProvider,
-          phone: clientPhone,
-          amount: total,
-        });
+        const charge = await apiPost<{ transaction: { id: string; status: string }; message: string }>(
+          "/api/payments/mobile-money",
+          { storeId: activeStore.storeId, provider: mmProvider, phone: clientPhone, amount: total }
+        );
+
         if (charge.transaction.status === "ECHEC") {
           setMessage({ type: "error", text: charge.message });
           setProcessing(false);
           return;
+        }
+
+        if (charge.transaction.status === "EN_ATTENTE") {
+          // Paiement asynchrone (ex: STK Push M-Pesa) : on attend la confirmation du client.
+          setMessage({ type: "info", text: charge.message });
+          const finalStatus = await pollMobileMoneyStatus(charge.transaction.id);
+          if (finalStatus === "ECHEC") {
+            setMessage({ type: "error", text: "Paiement mobile money refusé, annulé ou délai dépassé." });
+            setProcessing(false);
+            return;
+          }
         }
       }
 

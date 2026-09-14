@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 const SESSION_COOKIE = "session_token";
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/payments/mobile-money/mpesa-callback"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

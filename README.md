@@ -187,11 +187,39 @@ Le fichier [`src/lib/payments/mobileMoney.ts`](src/lib/payments/mobileMoney.ts) 
 interface commune (`chargeMobileMoney`) avec un fournisseur par opérateur :
 
 - **MOCK** (démo) : fonctionne immédiatement, sans compte marchand, pour tester tout le parcours
-  de vente.
-- **ORANGE_MONEY**, **AIRTEL_MONEY**, **MPESA** : squelettes prêts à connecter à la vraie API de
-  l'opérateur. Il vous faut un compte marchand auprès de l'opérateur, qui vous fournira une clé
-  API à renseigner dans `.env` (`ORANGE_MONEY_API_KEY`, etc.). Complétez ensuite la méthode
+  de vente. Paiement simulé réussi instantanément.
+- **MPESA** : intégration **réelle** (API Daraja de Safaricom, STK Push / "Lipa Na M-Pesa
+  Online") — voir ci-dessous.
+- **ORANGE_MONEY**, **AIRTEL_MONEY** : squelettes prêts à connecter à la vraie API de
+  l'opérateur (même schéma que M-Pesa). Il vous faut un compte marchand auprès de l'opérateur,
+  qui vous fournira une clé API à renseigner dans `.env`, puis à compléter dans la méthode
   `charge()` du fournisseur correspondant avec l'appel HTTP réel documenté par l'opérateur.
+
+### M-Pesa (Daraja) — configuration
+
+Contrairement au mode démo, un paiement M-Pesa réel est **asynchrone** : la requête envoie une
+invite de paiement sur le téléphone du client (statut `EN_ATTENTE`), qui doit valider avec son
+code PIN. La confirmation arrive ensuite via un webhook Safaricom
+(`/api/payments/mobile-money/mpesa-callback`), et le frontend interroge
+`/api/payments/mobile-money/status/[id]` toutes les 2 secondes jusqu'à résolution
+(`REUSSI`/`ECHEC`, ou échec après ~60 secondes sans réponse).
+
+**Tester gratuitement en sandbox (aucun compte marchand requis) :**
+
+1. Créez un compte gratuit sur [developer.safaricom.co.ke](https://developer.safaricom.co.ke) et
+   une "app" — vous obtenez immédiatement un `Consumer Key` et un `Consumer Secret` de test.
+2. Renseignez-les dans `.env` : `MPESA_CONSUMER_KEY`, `MPESA_CONSUMER_SECRET` (laissez
+   `MPESA_ENV=sandbox`, `MPESA_SHORTCODE` et `MPESA_PASSKEY` vides — des valeurs de test
+   publiques sont déjà utilisées par défaut).
+3. Renseignez `MPESA_CALLBACK_URL` avec une URL **publique HTTPS** :
+   - En production (Vercel) : `https://votre-app.vercel.app/api/payments/mobile-money/mpesa-callback`.
+   - En local : Safaricom ne peut pas appeler `localhost` — utilisez un tunnel, ex.
+     `npx ngrok http 3000`, et mettez l'URL ngrok générée.
+4. Sur la page **Vente (caisse)**, choisissez "Mobile Money" → fournisseur "M-Pesa", saisissez un
+   [numéro de test sandbox](https://developer.safaricom.co.ke/Documentation) (ex. `254708374149`).
+
+**Passer en production :** demandez un shortcode marchand (Paybill/Till) à Safaricom, définissez
+`MPESA_ENV=production`, et renseignez votre `MPESA_SHORTCODE` / `MPESA_PASSKEY` réels.
 
 ## Module fiscal
 
@@ -252,7 +280,8 @@ L'application est un projet Next.js standard : toute plateforme supportant `npm 
 
 - Les icônes PWA fournies sont en SVG (`public/icons/icon.svg`) ; pour une publication plus
   large (certains anciens appareils Android), remplacez-les par des PNG 192×192 et 512×512.
-- Les intégrations Mobile Money réelles (Orange Money, Airtel Money, M-Pesa) nécessitent un
-  compte marchand actif auprès de l'opérateur — seul le mode démo est fonctionnel sans clé API.
+- M-Pesa est intégré réellement (sandbox gratuit disponible sans compte marchand — voir
+  ci-dessus). Orange Money et Airtel Money restent des squelettes : il faut un compte marchand
+  actif auprès de l'opérateur pour les compléter.
 - Le mode hors-ligne couvre les ventes ; les autres actions (gestion de stock, fournisseurs…)
   nécessitent une connexion.
