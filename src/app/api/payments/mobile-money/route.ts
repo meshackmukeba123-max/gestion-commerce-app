@@ -37,6 +37,7 @@ export async function POST(req: Request) {
         amount: parsed.data.amount,
         status: result.status,
         externalRef: result.externalRef,
+        paymentUrl: result.paymentUrl,
       },
     });
 

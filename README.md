@@ -190,10 +190,15 @@ interface commune (`chargeMobileMoney`) avec un fournisseur par opérateur :
   de vente. Paiement simulé réussi instantanément.
 - **MPESA** : intégration **réelle** (API Daraja de Safaricom, STK Push / "Lipa Na M-Pesa
   Online") — voir ci-dessous.
-- **ORANGE_MONEY**, **AIRTEL_MONEY** : squelettes prêts à connecter à la vraie API de
-  l'opérateur (même schéma que M-Pesa). Il vous faut un compte marchand auprès de l'opérateur,
-  qui vous fournira une clé API à renseigner dans `.env`, puis à compléter dans la méthode
-  `charge()` du fournisseur correspondant avec l'appel HTTP réel documenté par l'opérateur.
+- **AIRTEL_MONEY** : intégration **réelle** (Airtel Money OpenAPI, invite USSD sur le téléphone,
+  même principe que M-Pesa) — voir ci-dessous.
+- **ORANGE_MONEY** : intégration **réelle** (API Web Payment) — génère un **lien de paiement**
+  que le client ouvre lui-même (le flux est différent : pas d'invite directe sur le téléphone) —
+  voir ci-dessous.
+
+Pour les trois, tant que les clés d'API ne sont pas configurées dans `.env`, un message d'erreur
+clair s'affiche à la caisse (pas de crash) — le mode MOCK reste disponible pour tester le
+parcours de vente sans aucune configuration.
 
 ### M-Pesa (Daraja) — configuration
 
@@ -220,6 +225,48 @@ code PIN. La confirmation arrive ensuite via un webhook Safaricom
 
 **Passer en production :** demandez un shortcode marchand (Paybill/Till) à Safaricom, définissez
 `MPESA_ENV=production`, et renseignez votre `MPESA_SHORTCODE` / `MPESA_PASSKEY` réels.
+
+### Airtel Money (OpenAPI) — configuration
+
+Même principe que M-Pesa (invite USSD envoyée sur le téléphone du client, statut asynchrone).
+Airtel Money n'ayant pas systématiquement de webhook fiable selon les comptes, le statut est
+ré-interrogé activement auprès d'Airtel à chaque fois que le frontend vérifie la transaction
+(pas de configuration de callback nécessaire).
+
+**Tester gratuitement en sandbox (UAT, aucun compte marchand requis) :**
+
+1. Créez un compte gratuit sur [developers.airtel.africa](https://developers.airtel.africa) et
+   une "app" — vous obtenez un `Client ID` / `Client Secret` pour l'environnement UAT.
+2. Renseignez-les dans `.env` : `AIRTEL_CLIENT_ID`, `AIRTEL_CLIENT_SECRET`.
+3. Ajustez `AIRTEL_COUNTRY` / `AIRTEL_COUNTRY_CODE` / `AIRTEL_CURRENCY_DEFAULT` selon votre pays
+   (par défaut : RD Congo — `CD` / `243` / `CDF`).
+4. Sur la page **Vente (caisse)**, choisissez "Mobile Money" → fournisseur "Airtel Money", avec
+   un numéro de test fourni par la documentation Airtel UAT.
+
+**Passer en production :** obtenez un compte marchand actif auprès d'Airtel, définissez
+`AIRTEL_ENV=production`.
+
+### Orange Money (Web Payment) — configuration
+
+Contrairement à M-Pesa/Airtel, Orange Money (API standard) ne pousse pas d'invite directement
+sur le téléphone : la requête génère un **lien de paiement** que le client doit ouvrir
+lui-même (affiché à la caisse sous forme de bouton "🔗 Ouvrir le lien de paiement", à faire
+scanner ou ouvrir sur le téléphone du client). La confirmation arrive ensuite via le webhook
+Orange (`/api/payments/mobile-money/orange-callback`), suivi de la même façon que les autres.
+
+1. Créez un compte gratuit sur [developer.orange.com](https://developer.orange.com), une "app"
+   Orange Money, et récupérez `Client ID` / `Client Secret` / `merchant_key` (fournis avec votre
+   compte sandbox ou marchand selon le pays).
+2. Renseignez `ORANGE_MONEY_CLIENT_ID`, `ORANGE_MONEY_CLIENT_SECRET`, `ORANGE_MONEY_MERCHANT_KEY`
+   dans `.env`, et `ORANGE_MONEY_COUNTRY` (ex: `cd` pour la RD Congo).
+3. Renseignez `ORANGE_MONEY_NOTIF_URL` avec une URL **publique HTTPS**, ex:
+   `https://votre-app.vercel.app/api/payments/mobile-money/orange-callback` (comme pour M-Pesa,
+   `localhost` ne fonctionne pas — utilisez ngrok en local).
+
+⚠️ Le format exact de l'API Orange Money (URLs, champs du webhook) varie selon le pays. Le code
+suit le schéma standard documenté par Orange ; ajustez `src/lib/payments/mobileMoney.ts` et
+`src/app/api/payments/mobile-money/orange-callback/route.ts` si votre pays utilise un format
+différent — la documentation fournie avec votre compte développeur fait foi.
 
 ## Module fiscal
 
@@ -280,8 +327,10 @@ L'application est un projet Next.js standard : toute plateforme supportant `npm 
 
 - Les icônes PWA fournies sont en SVG (`public/icons/icon.svg`) ; pour une publication plus
   large (certains anciens appareils Android), remplacez-les par des PNG 192×192 et 512×512.
-- M-Pesa est intégré réellement (sandbox gratuit disponible sans compte marchand — voir
-  ci-dessus). Orange Money et Airtel Money restent des squelettes : il faut un compte marchand
-  actif auprès de l'opérateur pour les compléter.
+- M-Pesa, Airtel Money et Orange Money sont intégrés réellement (M-Pesa et Airtel ont un
+  sandbox/UAT gratuit sans compte marchand ; Orange Money nécessite un compte développeur —
+  voir les sections ci-dessus). Les détails exacts de l'API Orange Money varient selon le pays
+  et n'ont pas pu être testés contre un vrai compte — ajustez si besoin une fois vos identifiants
+  obtenus.
 - Le mode hors-ligne couvre les ventes ; les autres actions (gestion de stock, fournisseurs…)
   nécessitent une connexion.

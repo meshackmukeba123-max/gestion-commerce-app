@@ -22,6 +22,7 @@ export default function VentesPage() {
   const [clientPhone, setClientPhone] = useState("");
   const [mmProvider, setMmProvider] = useState<"ORANGE_MONEY" | "AIRTEL_MONEY" | "MPESA" | "MOCK">("MOCK");
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const load = useCallback(() => {
@@ -87,6 +88,7 @@ export default function VentesPage() {
   async function checkout() {
     if (cart.length === 0) return;
     setMessage(null);
+    setPaymentUrl(null);
     setProcessing(true);
 
     const saleBody = {
@@ -104,7 +106,7 @@ export default function VentesPage() {
           setProcessing(false);
           return;
         }
-        const charge = await apiPost<{ transaction: { id: string; status: string }; message: string }>(
+        const charge = await apiPost<{ transaction: { id: string; status: string; paymentUrl?: string | null }; message: string }>(
           "/api/payments/mobile-money",
           { storeId: activeStore.storeId, provider: mmProvider, phone: clientPhone, amount: total }
         );
@@ -116,9 +118,11 @@ export default function VentesPage() {
         }
 
         if (charge.transaction.status === "EN_ATTENTE") {
-          // Paiement asynchrone (ex: STK Push M-Pesa) : on attend la confirmation du client.
+          // Paiement asynchrone (STK Push M-Pesa/Airtel, ou lien Orange Money) : on attend la confirmation.
           setMessage({ type: "info", text: charge.message });
+          if (charge.transaction.paymentUrl) setPaymentUrl(charge.transaction.paymentUrl);
           const finalStatus = await pollMobileMoneyStatus(charge.transaction.id);
+          setPaymentUrl(null);
           if (finalStatus === "ECHEC") {
             setMessage({ type: "error", text: "Paiement mobile money refusé, annulé ou délai dépassé." });
             setProcessing(false);
@@ -250,6 +254,17 @@ export default function VentesPage() {
             </>
           )}
         </div>
+
+        {paymentUrl && (
+          <a
+            href={paymentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-secondary block w-full text-center"
+          >
+            🔗 Ouvrir le lien de paiement Orange Money
+          </a>
+        )}
 
         {message && (
           <p

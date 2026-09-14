@@ -21,11 +21,18 @@ export type ChargeRequest = {
 export type ChargeResult = {
   status: "EN_ATTENTE" | "REUSSI" | "ECHEC";
   externalRef?: string;
+  /** Lien de paiement à ouvrir/scanner (flux Orange Money Web Payment). */
+  paymentUrl?: string;
   message: string;
 };
 
 interface MobileMoneyGateway {
   charge(req: ChargeRequest): Promise<ChargeResult>;
+  /**
+   * Ré-interroge activement le statut auprès de l'opérateur (pour les fournisseurs qui n'ont
+   * pas de webhook configuré ici). Optionnel : par défaut on se contente du statut déjà connu.
+   */
+  checkStatus?(externalRef: string): Promise<"EN_ATTENTE" | "REUSSI" | "ECHEC">;
 }
 
 /** Fournisseur de test : ne nécessite aucune clé API, utile en démo/développement. */
@@ -40,29 +47,219 @@ class MockGateway implements MobileMoneyGateway {
 }
 
 /**
- * Squelette d'intégration Orange Money (API Web Payment / Collections).
- * Nécessite ORANGE_MONEY_API_KEY, ORANGE_MONEY_MERCHANT_ID dans .env.
- * Documentation opérateur : à obtenir auprès d'Orange Money Développeurs.
+ * Intégration Orange Money réelle via l'API "Web Payment" du portail développeur Orange
+ * (https://developer.orange.com — compte gratuit, sandbox disponible immédiatement).
+ *
+ * Contrairement à M-Pesa/Airtel (invite envoyée directement sur le téléphone), le flux Orange
+ * Money standard génère un **lien de paiement** que le client ouvre lui-même (navigateur ou
+ * scan QR) pour saisir son code Orange Money. Le statut final arrive via le webhook
+ * `/api/payments/mobile-money/orange-callback` (notif_url), interrogé ensuite comme les autres
+ * fournisseurs par `/api/payments/mobile-money/status/[id]`.
+ *
+ * ⚠️ Les URLs exactes et le format de callback varient selon le pays Orange (RDC, Côte
+ * d'Ivoire, Sénégal…) — vérifiez la documentation fournie avec votre compte développeur et
+ * ajustez `ORANGE_MONEY_BASE_URL` / `ORANGE_MONEY_COUNTRY` si besoin.
  */
+function orangeBaseUrl() {
+  return process.env.ORANGE_MONEY_BASE_URL || "https://api.orange.com";
+}
+
 class OrangeMoneyGateway implements MobileMoneyGateway {
-  async charge(req: ChargeRequest): Promise<ChargeResult> {
-    const apiKey = process.env.ORANGE_MONEY_API_KEY;
-    if (!apiKey) {
-      return { status: "ECHEC", message: "ORANGE_MONEY_API_KEY non configurée. Voir .env.example." };
+  private async getAccessToken(): Promise<string> {
+    const clientId = process.env.ORANGE_MONEY_CLIENT_ID!;
+    const clientSecret = process.env.ORANGE_MONEY_CLIENT_SECRET!;
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+    const res = await fetch(`${orangeBaseUrl()}/oauth/v3/token`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "grant_type=client_credentials",
+    });
+    if (!res.ok) {
+      throw new Error("Authentification Orange Money refusée (vérifiez ORANGE_MONEY_CLIENT_ID / ORANGE_MONEY_CLIENT_SECRET).");
     }
-    // TODO production : appeler l'API réelle d'Orange Money ici avec fetch().
-    return { status: "EN_ATTENTE", message: `Requête envoyée à Orange Money pour ${req.phone}.` };
+    const data = (await res.json()) as { access_token: string };
+    return data.access_token;
+  }
+
+  async charge(req: ChargeRequest): Promise<ChargeResult> {
+    const clientId = process.env.ORANGE_MONEY_CLIENT_ID;
+    const clientSecret = process.env.ORANGE_MONEY_CLIENT_SECRET;
+    const merchantKey = process.env.ORANGE_MONEY_MERCHANT_KEY;
+    if (!clientId || !clientSecret || !merchantKey) {
+      return {
+        status: "ECHEC",
+        message:
+          "ORANGE_MONEY_CLIENT_ID / ORANGE_MONEY_CLIENT_SECRET / ORANGE_MONEY_MERCHANT_KEY non configurées. Créez un compte gratuit sur developer.orange.com — voir README.md.",
+      };
+    }
+    const notifUrl = process.env.ORANGE_MONEY_NOTIF_URL;
+    const returnUrl = process.env.ORANGE_MONEY_RETURN_URL || notifUrl;
+    if (!notifUrl) {
+      return {
+        status: "ECHEC",
+        message: "ORANGE_MONEY_NOTIF_URL non configurée (URL publique HTTPS requise par Orange). Voir .env.example.",
+      };
+    }
+
+    try {
+      const token = await this.getAccessToken();
+      const country = process.env.ORANGE_MONEY_COUNTRY || "cd"; // ex: cd = RD Congo
+      const orderId = req.reference || `TX-${Date.now()}`;
+
+      const res = await fetch(`${orangeBaseUrl()}/orange-money-webpay/${country}/v1/webpayment`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchant_key: merchantKey,
+          currency: req.currency,
+          order_id: orderId,
+          amount: Math.max(1, Math.round(req.amount)),
+          return_url: returnUrl,
+          cancel_url: returnUrl,
+          notif_url: notifUrl,
+          lang: "fr",
+          reference: orderId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.payment_url) {
+        return {
+          status: "ECHEC",
+          message: data.message || "Échec de la création du paiement Orange Money.",
+        };
+      }
+
+      return {
+        status: "EN_ATTENTE",
+        externalRef: orderId,
+        paymentUrl: data.payment_url as string,
+        message: "Lien de paiement Orange Money généré : faites-le ouvrir ou scanner par le client pour valider.",
+      };
+    } catch (err) {
+      return { status: "ECHEC", message: err instanceof Error ? err.message : "Erreur Orange Money inconnue." };
+    }
   }
 }
 
+/**
+ * Intégration Airtel Money réelle via l'Airtel Money OpenAPI (Collections / "Request to Pay")
+ * — https://developers.airtel.africa (compte gratuit, environnement UAT/sandbox disponible
+ * immédiatement, sans compte marchand actif).
+ *
+ * Comme M-Pesa, une invite USSD est envoyée sur le téléphone du client (statut EN_ATTENTE).
+ * L'Airtel OpenAPI de base ne pousse pas systématiquement de webhook selon la configuration du
+ * compte : par sécurité, `checkStatus()` ré-interroge activement l'API "Enquire" à chaque appel
+ * du frontend (voir /api/payments/mobile-money/status/[id]) plutôt que de dépendre d'un callback.
+ */
+function airtelBaseUrl() {
+  return process.env.AIRTEL_ENV === "production"
+    ? "https://openapi.airtel.africa"
+    : "https://openapiuat.airtel.africa";
+}
+
+/** Normalise un numéro local au format attendu par Airtel (sans indicatif pays, sans 0 initial). */
+function airtelMsisdn(rawPhone: string) {
+  const countryCode = process.env.AIRTEL_COUNTRY_CODE || "243"; // 243 = RD Congo
+  let digits = rawPhone.replace(/\D/g, "");
+  if (digits.startsWith(countryCode)) digits = digits.slice(countryCode.length);
+  else if (digits.startsWith("0")) digits = digits.slice(1);
+  return digits;
+}
+
 class AirtelMoneyGateway implements MobileMoneyGateway {
-  async charge(req: ChargeRequest): Promise<ChargeResult> {
-    const apiKey = process.env.AIRTEL_MONEY_API_KEY;
-    if (!apiKey) {
-      return { status: "ECHEC", message: "AIRTEL_MONEY_API_KEY non configurée. Voir .env.example." };
+  private async getAccessToken(): Promise<string> {
+    const clientId = process.env.AIRTEL_CLIENT_ID!;
+    const clientSecret = process.env.AIRTEL_CLIENT_SECRET!;
+    const res = await fetch(`${airtelBaseUrl()}/auth/oauth2/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, grant_type: "client_credentials" }),
+    });
+    if (!res.ok) {
+      throw new Error("Authentification Airtel Money refusée (vérifiez AIRTEL_CLIENT_ID / AIRTEL_CLIENT_SECRET).");
     }
-    // TODO production : appeler l'API réelle d'Airtel Money ici avec fetch().
-    return { status: "EN_ATTENTE", message: `Requête envoyée à Airtel Money pour ${req.phone}.` };
+    const data = (await res.json()) as { access_token: string };
+    return data.access_token;
+  }
+
+  async charge(req: ChargeRequest): Promise<ChargeResult> {
+    const clientId = process.env.AIRTEL_CLIENT_ID;
+    const clientSecret = process.env.AIRTEL_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      return {
+        status: "ECHEC",
+        message:
+          "AIRTEL_CLIENT_ID / AIRTEL_CLIENT_SECRET non configurées. Créez un compte gratuit sur developers.airtel.africa (sandbox UAT) — voir README.md.",
+      };
+    }
+
+    try {
+      const token = await this.getAccessToken();
+      const country = process.env.AIRTEL_COUNTRY || "CD"; // CD = RD Congo
+      const currency = req.currency;
+      const transactionId = `TX${Date.now()}`;
+
+      const res = await fetch(`${airtelBaseUrl()}/merchant/v1/payments/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "*/*",
+          "X-Country": country,
+          "X-Currency": currency,
+        },
+        body: JSON.stringify({
+          reference: req.reference || "VENTE",
+          subscriber: { country, currency, msisdn: airtelMsisdn(req.phone) },
+          transaction: { amount: Math.max(1, Math.round(req.amount)), country, currency, id: transactionId },
+        }),
+      });
+
+      const data = await res.json();
+      const success = res.ok && (data.status?.success === true || data.status?.code === "200");
+
+      if (!success) {
+        return {
+          status: "ECHEC",
+          message: data.status?.message || data.status?.response_code || "Échec de la requête Airtel Money.",
+        };
+      }
+
+      return {
+        status: "EN_ATTENTE",
+        externalRef: transactionId,
+        message: `Invite de paiement envoyée au ${req.phone}. Le client doit valider avec son code PIN Airtel Money.`,
+      };
+    } catch (err) {
+      return { status: "ECHEC", message: err instanceof Error ? err.message : "Erreur Airtel Money inconnue." };
+    }
+  }
+
+  async checkStatus(externalRef: string): Promise<"EN_ATTENTE" | "REUSSI" | "ECHEC"> {
+    try {
+      const token = await this.getAccessToken();
+      const country = process.env.AIRTEL_COUNTRY || "CD";
+      const currency = process.env.AIRTEL_CURRENCY_DEFAULT || "CDF";
+      const res = await fetch(`${airtelBaseUrl()}/standard/v1/payments/${externalRef}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Country": country,
+          "X-Currency": currency,
+        },
+      });
+      const data = await res.json();
+      const code = data?.data?.transaction?.status as string | undefined;
+      if (code === "TS" || code === "SUCCESS") return "REUSSI";
+      if (code === "TF" || code === "FAILED") return "ECHEC";
+      return "EN_ATTENTE";
+    } catch {
+      return "EN_ATTENTE";
+    }
   }
 }
 
@@ -199,4 +396,14 @@ const gateways: Record<MobileMoneyProvider, MobileMoneyGateway> = {
 export async function chargeMobileMoney(req: ChargeRequest): Promise<ChargeResult> {
   const gateway = gateways[req.provider] ?? gateways.MOCK;
   return gateway.charge(req);
+}
+
+/** Ré-interroge activement le statut chez l'opérateur, pour les fournisseurs sans webhook (ex: Airtel). */
+export async function checkMobileMoneyStatus(
+  provider: MobileMoneyProvider,
+  externalRef: string
+): Promise<"EN_ATTENTE" | "REUSSI" | "ECHEC" | null> {
+  const gateway = gateways[provider];
+  if (!gateway?.checkStatus) return null;
+  return gateway.checkStatus(externalRef);
 }
