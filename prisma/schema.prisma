@@ -1,0 +1,273 @@
+// Schema de base de données pour l'application de gestion commerçant.
+// Par défaut : SQLite (aucune installation de serveur requise, fichier local dev.db).
+// Pour la production, changez le provider en "postgresql" et DATABASE_URL dans .env
+// (voir README.md section "Déploiement / Passer à PostgreSQL").
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  GESTIONNAIRE
+  VENDEUR
+}
+
+model Store {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("boutique") // quincaillerie, pharmacie, boutique, autre
+  address   String?
+  phone     String?
+  currency  String   @default("CDF")
+  taxRate   Float    @default(16)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships    StoreMembership[]
+  products       Product[]
+  suppliers      Supplier[]
+  purchaseOrders PurchaseOrder[]
+  sales          Sale[]
+  expenses       Expense[]
+  stockMovements StockMovement[]
+  mobileMoneyTx  MobileMoneyTransaction[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  memberships    StoreMembership[]
+  sales          Sale[]          @relation("SoldBy")
+  stockMovements StockMovement[] @relation("MovedBy")
+}
+
+model StoreMembership {
+  id      String @id @default(cuid())
+  userId  String
+  storeId String
+  role    Role   @default(VENDEUR)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id             String    @id @default(cuid())
+  storeId        String
+  name           String
+  sku            String?
+  barcode        String?
+  categoryId     String?
+  unit           String    @default("pièce")
+  costPrice      Float     @default(0)
+  sellPrice      Float     @default(0)
+  quantity       Float     @default(0)
+  alertThreshold Float     @default(5)
+  expirationDate DateTime?
+  imageUrl       String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  store              Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category           Category?            @relation(fields: [categoryId], references: [id])
+  stockMovements     StockMovement[]
+  saleItems          SaleItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([storeId])
+  @@index([barcode])
+}
+
+enum StockMovementType {
+  ENTREE
+  SORTIE
+  AJUSTEMENT
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  storeId   String
+  productId String
+  type      StockMovementType
+  quantity  Float
+  reason    String?
+  userId    String?
+  createdAt DateTime          @default(now())
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation("MovedBy", fields: [userId], references: [id])
+
+  @@index([storeId, productId])
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  storeId   String
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  store          Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+
+  @@index([storeId])
+}
+
+enum PurchaseOrderStatus {
+  EN_ATTENTE
+  RECU
+  ANNULE
+}
+
+enum PaymentStatus {
+  IMPAYE
+  PARTIEL
+  PAYE
+}
+
+model PurchaseOrder {
+  id            String              @id @default(cuid())
+  storeId       String
+  supplierId    String
+  status        PurchaseOrderStatus @default(EN_ATTENTE)
+  paymentStatus PaymentStatus       @default(IMPAYE)
+  totalAmount   Float               @default(0)
+  amountPaid    Float               @default(0)
+  orderDate     DateTime            @default(now())
+  receivedDate  DateTime?
+  notes         String?
+
+  store    Store               @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@index([storeId])
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(cuid())
+  purchaseOrderId String
+  productId       String
+  quantity        Float
+  unitCost        Float
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+}
+
+enum SaleChannel {
+  MAGASIN
+  MOBILE_MONEY
+  CARTE
+  VIREMENT
+}
+
+model Sale {
+  id            String      @id @default(cuid())
+  storeId       String
+  userId        String?
+  clientName    String?
+  clientPhone   String?
+  subtotal      Float
+  taxAmount     Float
+  total         Float
+  paymentMethod SaleChannel @default(MAGASIN)
+  paymentRef    String?
+  offlineId     String?     @unique
+  createdAt     DateTime    @default(now())
+
+  store Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User?      @relation("SoldBy", fields: [userId], references: [id])
+  items SaleItem[]
+
+  @@index([storeId, createdAt])
+}
+
+model SaleItem {
+  id        String @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Float
+  unitPrice Float
+  total     Float
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+enum ExpenseCategory {
+  LOYER
+  SALAIRES
+  TRANSPORT
+  ACHAT_FOURNITURES
+  ELECTRICITE_EAU
+  MARKETING
+  AUTRE
+}
+
+model Expense {
+  id       String          @id @default(cuid())
+  storeId  String
+  category ExpenseCategory @default(AUTRE)
+  label    String
+  amount   Float
+  date     DateTime        @default(now())
+  notes    String?
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, date])
+}
+
+enum MobileMoneyProvider {
+  ORANGE_MONEY
+  AIRTEL_MONEY
+  MPESA
+  MOCK
+}
+
+enum MobileMoneyStatus {
+  EN_ATTENTE
+  REUSSI
+  ECHEC
+}
+
+model MobileMoneyTransaction {
+  id          String               @id @default(cuid())
+  storeId     String
+  saleId      String?
+  provider    MobileMoneyProvider
+  phone       String
+  amount      Float
+  status      MobileMoneyStatus    @default(EN_ATTENTE)
+  externalRef String?
+  createdAt   DateTime             @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
