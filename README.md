@@ -151,7 +151,18 @@ gestion-commerce-app/
 │   │   ├── export/            # Génération PDF / Excel
 │   │   └── offline/           # File d'attente hors-ligne (IndexedDB) + synchronisation
 │   └── middleware.ts          # Protection des routes (authentification)
+├── scripts/
+│   └── generate-icons.js      # Régénère public/icons/icon-*.png (sans dépendance externe)
 └── README.md
+```
+
+## Tests
+
+Une suite de tests automatisés (Vitest) couvre la logique métier critique : calcul de la taxe,
+permissions par rôle (RBAC), validation des formulaires (zod).
+
+```bash
+npm test
 ```
 
 ## Rôles et permissions
@@ -357,8 +368,6 @@ L'application est un projet Next.js standard : toute plateforme supportant `npm 
 
 ## Limites connues
 
-- Les icônes PWA fournies sont en SVG (`public/icons/icon.svg`) ; pour une publication plus
-  large (certains anciens appareils Android), remplacez-les par des PNG 192×192 et 512×512.
 - CinetPay, M-Pesa, Airtel Money et Orange Money sont intégrés réellement. CinetPay, M-Pesa et
   Airtel ont un compte test/sandbox gratuit en libre-service. **Orange Money direct nécessite un
   accord marchand séparé** (pas juste un compte developer.orange.com — constaté en pratique,
