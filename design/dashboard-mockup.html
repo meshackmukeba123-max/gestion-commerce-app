@@ -1,0 +1,508 @@
+<title>Tableau de Bord Commerce</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f7f5;
+    --surface: #ffffff;
+    --surface-2: #eef2ef;
+    --border: #dde6e1;
+    --text: #10201a;
+    --text-muted: #5c6f66;
+    --text-faint: #93a39a;
+    --accent: #0d7a53;
+    --accent-strong: #0a5f41;
+    --accent-soft: #e3f3ec;
+    --hero-from: #0b2f24;
+    --hero-to: #0f4a35;
+    --hero-text: #f1f7f3;
+    --hero-muted: #a9c7ba;
+    --hero-tile: rgba(255,255,255,0.06);
+    --hero-tile-border: rgba(255,255,255,0.12);
+    --warn-bg: #fef6e7;
+    --warn-border: #f3ddac;
+    --warn-text: #8a5a12;
+    --danger: #b3411f;
+    --shadow: 0 1px 2px rgba(16,32,26,0.04), 0 8px 24px -12px rgba(16,32,26,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b120f;
+      --surface: #121c18;
+      --surface-2: #16211c;
+      --border: #23322b;
+      --text: #eaf2ee;
+      --text-muted: #9db3a8;
+      --text-faint: #66796f;
+      --accent: #33b789;
+      --accent-strong: #4fcf9f;
+      --accent-soft: #163127;
+      --hero-from: #061410;
+      --hero-to: #0b2a20;
+      --hero-text: #f1f7f3;
+      --hero-muted: #93b3a4;
+      --hero-tile: rgba(255,255,255,0.05);
+      --hero-tile-border: rgba(255,255,255,0.1);
+      --warn-bg: #241d0d;
+      --warn-border: #4a3b16;
+      --warn-text: #e3b357;
+      --danger: #e08063;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b120f;
+    --surface: #121c18;
+    --surface-2: #16211c;
+    --border: #23322b;
+    --text: #eaf2ee;
+    --text-muted: #9db3a8;
+    --text-faint: #66796f;
+    --accent: #33b789;
+    --accent-strong: #4fcf9f;
+    --accent-soft: #163127;
+    --hero-from: #061410;
+    --hero-to: #0b2a20;
+    --hero-text: #f1f7f3;
+    --hero-muted: #93b3a4;
+    --hero-tile: rgba(255,255,255,0.05);
+    --hero-tile-border: rgba(255,255,255,0.1);
+    --warn-bg: #241d0d;
+    --warn-border: #4a3b16;
+    --warn-text: #e3b357;
+    --danger: #e08063;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .display { font-family: "Manrope", ui-sans-serif, system-ui, sans-serif; text-wrap: balance; }
+
+  a { color: inherit; }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding-inline: 20px; }
+
+  /* Top app bar */
+  .appbar {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .appbar-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-block: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: linear-gradient(155deg, var(--accent), var(--accent-strong));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-family: "Manrope"; font-weight: 800; font-size: 14px;
+    flex-shrink: 0;
+  }
+  .brand-name { font-family: "Manrope"; font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+  .brand-store {
+    font-size: 12.5px; color: var(--text-muted); margin-left: 6px;
+    padding-left: 10px; border-left: 1px solid var(--border);
+  }
+  .appbar-right { display: flex; align-items: center; gap: 14px; }
+  .icon-btn {
+    width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--surface); display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); flex-shrink: 0;
+  }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Manrope"; font-weight: 700; font-size: 12.5px;
+    border: 1px solid var(--border);
+  }
+
+  /* Horizontal section nav */
+  .navstrip {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .navstrip-inner {
+    display: flex; gap: 4px; overflow-x: auto; padding-block: 8px;
+    scrollbar-width: none;
+  }
+  .navstrip-inner::-webkit-scrollbar { display: none; }
+  .navlink {
+    display: flex; align-items: center; gap: 7px; white-space: nowrap;
+    padding: 7px 13px; border-radius: 8px; font-size: 13.5px; font-weight: 500;
+    color: var(--text-muted); flex-shrink: 0;
+  }
+  .navlink svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .navlink.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+
+  main { padding-block: 22px 40px; display: flex; flex-direction: column; gap: 22px; }
+
+  /* Hero */
+  .hero {
+    border-radius: 18px;
+    background: linear-gradient(150deg, var(--hero-from), var(--hero-to));
+    color: var(--hero-text);
+    padding: 26px 26px 22px;
+    box-shadow: var(--shadow);
+  }
+  .hero-top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;
+  }
+  .hero-greeting h1 { font-size: 23px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .hero-greeting p { margin: 0; font-size: 13.5px; color: var(--hero-muted); }
+  .hero-date {
+    font-size: 12.5px; color: var(--hero-muted); text-align: right;
+    font-family: "Manrope"; font-weight: 600; letter-spacing: 0.02em;
+  }
+
+  .hero-cols { display: grid; grid-template-columns: 200px 1fr; gap: 26px; margin-top: 22px; }
+
+  .quick-actions { display: flex; flex-direction: column; gap: 2px; }
+  .quick-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--hero-muted); margin-bottom: 8px;
+  }
+  .quick-link {
+    display: flex; align-items: center; gap: 9px; padding: 7px 4px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 500; color: var(--hero-text);
+  }
+  .quick-link svg { width: 15px; height: 15px; color: var(--hero-muted); flex-shrink: 0; }
+
+  .app-grid-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .app-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+  }
+  .app-tile {
+    background: var(--hero-tile);
+    border: 1px solid var(--hero-tile-border);
+    border-radius: 12px;
+    padding: 13px 10px 11px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  }
+  .app-tile svg { width: 19px; height: 19px; color: var(--hero-text); }
+  .app-tile span { font-size: 11.5px; font-weight: 500; color: var(--hero-text); line-height: 1.25; }
+
+  /* Alert banner */
+  .alert {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    background: var(--warn-bg); border: 1px solid var(--warn-border);
+    color: var(--warn-text); border-radius: 12px; padding: 13px 18px; font-size: 13.5px;
+  }
+  .alert-msg { display: flex; align-items: center; gap: 10px; }
+  .alert-msg svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .alert b { font-weight: 700; }
+  .alert-link { font-weight: 600; text-decoration: underline; text-underline-offset: 2px; flex-shrink: 0; }
+
+  /* KPIs */
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .kpi-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .kpi-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .kpi-trend {
+    font-size: 11.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+    font-family: "Manrope";
+  }
+  .kpi-trend.up { background: var(--accent-soft); color: var(--accent-strong); }
+  .kpi-trend.down { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .kpi-value { font-family: "Manrope"; font-size: 25px; font-weight: 800; letter-spacing: -0.01em; }
+  .kpi-value small { font-size: 13px; font-weight: 600; color: var(--text-faint); margin-left: 2px; }
+  .kpi-spark { height: 28px; }
+
+  /* Lower grid: table + side panel */
+  .lower-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: start; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .panel-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 15px 18px; border-bottom: 1px solid var(--border);
+  }
+  .panel-head h2 { font-size: 14.5px; font-weight: 700; margin: 0; }
+  .panel-head a { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 9px 18px; color: var(--text-faint); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 11px 18px; border-top: 1px solid var(--border); }
+  .stock-pill {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .stock-pill.low { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
+  .stock-pill.mid { background: var(--warn-bg); color: var(--warn-text); }
+  .stock-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .activity-list { display: flex; flex-direction: column; }
+  .activity-row {
+    display: flex; align-items: center; gap: 11px; padding: 12px 18px; border-top: 1px solid var(--border);
+  }
+  .activity-row:first-child { border-top: none; }
+  .activity-dot {
+    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+    background: var(--accent-soft); color: var(--accent-strong);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .activity-dot svg { width: 15px; height: 15px; }
+  .activity-text { flex: 1; min-width: 0; }
+  .activity-text b { font-size: 13px; font-weight: 600; display: block; }
+  .activity-text span { font-size: 12px; color: var(--text-muted); }
+  .activity-amount { font-family: "Manrope"; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+
+  @media (max-width: 860px) {
+    .hero-cols { grid-template-columns: 1fr; }
+    .app-grid { grid-template-columns: repeat(4, 1fr); }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .lower-grid { grid-template-columns: 1fr; }
+    .brand-store { display: none; }
+  }
+  @media (max-width: 480px) {
+    .app-grid { grid-template-columns: repeat(3, 1fr); }
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="appbar">
+  <div class="shell appbar-inner">
+    <div class="brand">
+      <div class="brand-mark">GC</div>
+      <div class="brand-name">Gestion Commerce</div>
+      <div class="brand-store">Quincaillerie La Bonne Affaire ▾</div>
+    </div>
+    <div class="appbar-right">
+      <div class="icon-btn" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="17" height="17"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="avatar">AK</div>
+    </div>
+  </div>
+  <div class="navstrip">
+    <div class="shell navstrip-inner">
+      <a class="navlink active" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Tableau de bord
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+        Vente
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Historique
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v9l9 5 9-5V8"/><path d="M12 13v9"/></svg>
+        Stock
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+        Finances
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="20" height="12" rx="2"/><path d="M6 9V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>
+        Dépenses
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="18" height="10" rx="1"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg>
+        Fournisseurs
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6l1 4H8l1-4Z"/><path d="M5 6h14l-1.5 14a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2L5 6Z"/></svg>
+        Commandes
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg>
+        Boutiques
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c1-4 3.5-6 6.5-6s5.5 2 6.5 6"/><circle cx="18" cy="8" r="2.6"/><path d="M15.7 14.3c2.3.4 4 2.2 4.8 5.7"/></svg>
+        Utilisateurs
+      </a>
+      <a class="navlink" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+        Paramètres
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <main>
+
+    <section class="hero">
+      <div class="hero-top">
+        <div class="hero-greeting">
+          <h1>Bon après-midi, Amina</h1>
+          <p>Quincaillerie La Bonne Affaire — Lubumbashi</p>
+        </div>
+        <div class="hero-date">MARDI 15 SEPTEMBRE 2026</div>
+      </div>
+
+      <div class="hero-cols">
+        <div class="quick-actions">
+          <div class="quick-label">Actions rapides</div>
+          <a class="quick-link" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+            Nouvelle vente
+          </a>
+          <a class="quick-link" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v9l9 5 9-5V8"/></svg>
+            Nouveau produit
+          </a>
+          <a class="quick-link" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+            Nouvelle dépense
+          </a>
+          <a class="quick-link" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+            Voir les rapports
+          </a>
+        </div>
+
+        <div class="app-grid-wrap">
+          <div class="quick-label">Applications</div>
+          <div class="app-grid">
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg><span>Vente</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v9l9 5 9-5V8"/></svg><span>Stock</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.8 2.8 0 0 1 4 4L7 21l-4 1 1-4Z"/></svg><span>Mouvements</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg><span>Finances</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="20" height="12" rx="2"/><path d="M6 9V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg><span>Dépenses</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="18" height="10" rx="1"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg><span>Fournisseurs</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6l1 4H8l1-4Z"/><path d="M5 6h14l-1.5 14a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2L5 6Z"/></svg><span>Commandes</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg><span>Boutiques</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c1-4 3.5-6 6.5-6s5.5 2 6.5 6"/><circle cx="18" cy="8" r="2.6"/><path d="M15.7 14.3c2.3.4 4 2.2 4.8 5.7"/></svg><span>Utilisateurs</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span>Historique</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span>Paramètres</span></div>
+            <div class="app-tile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></svg><span>Support</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="alert">
+      <div class="alert-msg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <span><b>Articles en stock bas.</b> 2 article(s) sous leur seuil d'alerte : Tôle ondulée 2m, Boîte de vis (100pcs).</span>
+      </div>
+      <a class="alert-link" href="#">Voir le stock</a>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Ventes aujourd'hui</span>
+          <span class="kpi-trend up">+12%</span>
+        </div>
+        <div class="kpi-value">34 800 <small>CDF</small></div>
+        <svg class="kpi-spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+          <polyline points="0,22 15,20 30,16 45,18 60,10 75,12 100,4" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Dépenses (30j)</span>
+          <span class="kpi-trend down">+8%</span>
+        </div>
+        <div class="kpi-value">175 000 <small>CDF</small></div>
+        <svg class="kpi-spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+          <polyline points="0,10 15,14 30,12 45,18 60,16 75,22 100,20" fill="none" stroke="var(--danger)" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Bénéfice net (30j)</span>
+          <span class="kpi-trend up">+4%</span>
+        </div>
+        <div class="kpi-value">612 400 <small>CDF</small></div>
+        <svg class="kpi-spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+          <polyline points="0,20 15,18 30,19 45,14 60,15 75,8 100,6" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-top">
+          <span class="kpi-label">Produits en stock</span>
+        </div>
+        <div class="kpi-value">4 <small>références</small></div>
+        <svg class="kpi-spark" viewBox="0 0 100 28" preserveAspectRatio="none">
+          <polyline points="0,16 15,16 30,16 45,16 60,16 75,16 100,16" fill="none" stroke="var(--text-faint)" stroke-width="2" stroke-dasharray="3 3"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="lower-grid">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Produits en alerte de stock</h2>
+          <a href="#">Voir tout le stock →</a>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Produit</th><th>Quantité</th><th>Seuil</th><th>Statut</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Boîte de vis (100pcs)</td><td>4 boîte</td><td>10</td>
+              <td><span class="stock-pill low">Critique</span></td>
+            </tr>
+            <tr>
+              <td>Tôle ondulée 2m</td><td>8 pièce</td><td>10</td>
+              <td><span class="stock-pill mid">Bas</span></td>
+            </tr>
+            <tr>
+              <td>Marteau menuisier</td><td>35 pièce</td><td>5</td>
+              <td style="color:var(--text-faint)">—</td>
+            </tr>
+            <tr>
+              <td>Ciment 50kg</td><td>118 sac</td><td>20</td>
+              <td style="color:var(--text-faint)">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Activité récente</h2>
+          <a href="#">Historique →</a>
+        </div>
+        <div class="activity-list">
+          <div class="activity-row">
+            <div class="activity-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+            </div>
+            <div class="activity-text"><b>Vente — Ciment 50kg ×2</b><span>Il y a 12 min · Espèces</span></div>
+            <div class="activity-amount">17 400</div>
+          </div>
+          <div class="activity-row">
+            <div class="activity-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6l1 4H8l1-4Z"/><path d="M5 6h14l-1.5 14a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2L5 6Z"/></svg>
+            </div>
+            <div class="activity-text"><b>Commande reçue — Distributeur Matériaux Katanga</b><span>Il y a 2 h · 20 sacs de ciment</span></div>
+            <div class="activity-amount">240 000</div>
+          </div>
+          <div class="activity-row">
+            <div class="activity-dot">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="20" height="12" rx="2"/><path d="M6 9V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>
+            </div>
+            <div class="activity-text"><b>Dépense — Transport marchandises</b><span>Hier</span></div>
+            <div class="activity-amount">25 000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

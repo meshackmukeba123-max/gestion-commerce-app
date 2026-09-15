@@ -27,8 +27,8 @@ export function OfflineBadge() {
 
   if (online && pending === 0) {
     return (
-      <span className="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-        ● En ligne
+      <span className="badge shrink-0 bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+        ● <span className="hidden sm:inline">En ligne</span>
       </span>
     );
   }
@@ -36,10 +36,19 @@ export function OfflineBadge() {
   return (
     <button
       onClick={() => syncPendingSales()}
-      className="badge bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+      className="badge shrink-0 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
       title="Cliquer pour forcer la synchronisation"
     >
-      {online ? `⏳ ${pending} vente(s) à synchroniser` : "🔌 Hors-ligne"}
+      {online ? (
+        <>
+          ⏳ <span className="hidden sm:inline">{pending} vente(s) à synchroniser</span>
+          <span className="sm:hidden">{pending}</span>
+        </>
+      ) : (
+        <>
+          🔌 <span className="hidden sm:inline">Hors-ligne</span>
+        </>
+      )}
     </button>
   );
 }
