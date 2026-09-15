@@ -16,6 +16,10 @@ export type ChargeRequest = {
   amount: number;
   currency: string;
   reference: string;
+  /** Requis par CinetPay (prénom, nom, email du client). */
+  clientFirstName?: string;
+  clientLastName?: string;
+  clientEmail?: string;
 };
 
 export type ChargeResult = {
@@ -387,28 +391,49 @@ class MPesaGateway implements MobileMoneyGateway {
 }
 
 /**
- * Intégration CinetPay réelle — agrégateur de paiement mobile money très utilisé en Afrique
- * francophone (RDC, Côte d'Ivoire, Sénégal, Cameroun…). Une seule API donne accès à Orange
- * Money, Airtel Money, MTN Money, Moov Money et carte bancaire, sans négocier un accord
- * marchand séparé avec chaque opérateur — inscription et sandbox gratuits sur cinetpay.com.
+ * Intégration CinetPay réelle (API v1, authentification OAuth par jeton) — agrégateur de
+ * paiement mobile money très utilisé en Afrique francophone (RDC, Côte d'Ivoire, Sénégal,
+ * Cameroun…). Une seule API donne accès à Orange Money, Airtel Money, MTN Money, Moov Money et
+ * carte bancaire, sans négocier un accord marchand séparé avec chaque opérateur — inscription et
+ * sandbox gratuits sur cinetpay.com.
  *
  * Flux "lien de paiement" comme Orange Money : le client ouvre le lien, choisit son moyen de
- * paiement (Orange Money, Airtel Money…) et valide. Confirmation via webhook
- * `/api/payments/mobile-money/cinetpay-callback`, qui re-vérifie le statut auprès de CinetPay
- * avant de le considérer fiable (recommandation officielle CinetPay : ne jamais faire confiance
- * au contenu brut du webhook).
+ * paiement et valide. Confirmation via webhook `/api/payments/mobile-money/cinetpay-callback`,
+ * qui re-vérifie le statut auprès de CinetPay (GET /v1/payment/{id}) avant de le considérer
+ * fiable — CinetPay déconseille explicitement de faire confiance au contenu brut du webhook.
  */
-const CINETPAY_BASE_URL = "https://api-checkout.cinetpay.com/v2";
+function cinetpayHost() {
+  if (process.env.CINETPAY_BASE_URL) return process.env.CINETPAY_BASE_URL.replace(/\/$/, "");
+  // Sandbox : api.cinetpay.net — Production : api.cinetpay.co (domaines différents !).
+  return process.env.CINETPAY_ENV === "production" ? "https://api.cinetpay.co" : "https://api.cinetpay.net";
+}
+
+async function cinetpayGetToken(): Promise<string> {
+  const apiKey = process.env.CINETPAY_APIKEY!;
+  const apiPassword = process.env.CINETPAY_API_PASSWORD!;
+  const res = await fetch(`${cinetpayHost()}/v1/oauth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: apiKey, api_password: apiPassword }),
+  });
+  if (!res.ok) {
+    throw new Error("Authentification CinetPay refusée (vérifiez CINETPAY_APIKEY / CINETPAY_API_PASSWORD).");
+  }
+  const data = await res.json();
+  const token = data.access_token || data.token;
+  if (!token) throw new Error("Réponse d'authentification CinetPay inattendue (pas de jeton).");
+  return token as string;
+}
 
 class CinetPayGateway implements MobileMoneyGateway {
   async charge(req: ChargeRequest): Promise<ChargeResult> {
-    const apikey = process.env.CINETPAY_APIKEY;
-    const siteId = process.env.CINETPAY_SITE_ID;
-    if (!apikey || !siteId) {
+    const apiKey = process.env.CINETPAY_APIKEY;
+    const apiPassword = process.env.CINETPAY_API_PASSWORD;
+    if (!apiKey || !apiPassword) {
       return {
         status: "ECHEC",
         message:
-          "CINETPAY_APIKEY / CINETPAY_SITE_ID non configurées. Créez un compte gratuit sur cinetpay.com (mode test disponible) — voir README.md.",
+          "CINETPAY_APIKEY / CINETPAY_API_PASSWORD non configurées. Créez un compte gratuit sur cinetpay.com (mode test disponible) — voir README.md.",
       };
     }
     const notifyUrl = process.env.CINETPAY_NOTIFY_URL;
@@ -418,37 +443,51 @@ class CinetPayGateway implements MobileMoneyGateway {
         message: "CINETPAY_NOTIFY_URL non configurée (URL publique HTTPS requise par CinetPay). Voir .env.example.",
       };
     }
+    if (!req.clientEmail || !req.clientFirstName || !req.clientLastName) {
+      return {
+        status: "ECHEC",
+        message: "Nom, prénom et email du client sont requis pour un paiement CinetPay.",
+      };
+    }
     const returnUrl = process.env.CINETPAY_RETURN_URL || notifyUrl;
     const transactionId = req.reference.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 30) || `TX${Date.now()}`;
 
     try {
-      const res = await fetch(`${CINETPAY_BASE_URL}/payment`, {
+      const token = await cinetpayGetToken();
+
+      const res = await fetch(`${cinetpayHost()}/v1/payment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          apikey,
-          site_id: siteId,
-          transaction_id: transactionId,
-          amount: Math.max(100, Math.round(req.amount)), // CinetPay exige un montant minimum (généralement 100 XOF/XAF/CDF)
           currency: req.currency,
-          description: "Paiement boutique",
+          merchant_transaction_id: transactionId,
+          amount: Math.max(100, Math.round(req.amount)), // CinetPay exige un montant minimum (généralement 100 XOF/XAF/CDF)
+          success_url: returnUrl,
+          failed_url: returnUrl,
           notify_url: notifyUrl,
-          return_url: returnUrl,
-          channels: "MOBILE_MONEY",
-          customer_phone_number: req.phone,
+          lang: "fr",
+          designation: "Paiement boutique",
+          client_first_name: req.clientFirstName,
+          client_last_name: req.clientLastName,
+          client_phone_number: req.phone,
+          client_email: req.clientEmail,
+          direct_pay: false,
         }),
       });
 
       const data = await res.json();
 
-      if (data.code !== "201" || !data.data?.payment_url) {
-        return { status: "ECHEC", message: data.message || data.description || "Échec de la création du paiement CinetPay." };
+      if (data.code !== 200 || !data.payment_url) {
+        return {
+          status: "ECHEC",
+          message: data.details?.message || data.message || "Échec de la création du paiement CinetPay.",
+        };
       }
 
       return {
         status: "EN_ATTENTE",
         externalRef: transactionId,
-        paymentUrl: data.data.payment_url as string,
+        paymentUrl: data.payment_url as string,
         message: "Lien de paiement généré : faites-le ouvrir ou scanner par le client (Orange Money, Airtel Money, MTN Money…).",
       };
     } catch (err) {
@@ -457,20 +496,19 @@ class CinetPayGateway implements MobileMoneyGateway {
   }
 
   async checkStatus(externalRef: string): Promise<"EN_ATTENTE" | "REUSSI" | "ECHEC"> {
-    const apikey = process.env.CINETPAY_APIKEY;
-    const siteId = process.env.CINETPAY_SITE_ID;
-    if (!apikey || !siteId) return "EN_ATTENTE";
+    const apiKey = process.env.CINETPAY_APIKEY;
+    const apiPassword = process.env.CINETPAY_API_PASSWORD;
+    if (!apiKey || !apiPassword) return "EN_ATTENTE";
     try {
-      const res = await fetch(`${CINETPAY_BASE_URL}/payment/check`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apikey, site_id: siteId, transaction_id: externalRef }),
+      const token = await cinetpayGetToken();
+      const res = await fetch(`${cinetpayHost()}/v1/payment/${encodeURIComponent(externalRef)}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const status = data?.data?.status as string | undefined;
-      if (status === "ACCEPTED") return "REUSSI";
-      if (status === "REFUSED" || status === "CANCELLED") return "ECHEC";
-      return "EN_ATTENTE";
+      const status = (data?.details?.status || data?.status) as string | undefined;
+      if (status === "SUCCESS") return "REUSSI";
+      if (status === "FAILED") return "ECHEC";
+      return "EN_ATTENTE"; // INITIATED ou PENDING
     } catch {
       return "EN_ATTENTE";
     }

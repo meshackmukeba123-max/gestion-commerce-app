@@ -20,6 +20,7 @@ export default function VentesPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MAGASIN");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
   const [mmProvider, setMmProvider] = useState<"ORANGE_MONEY" | "AIRTEL_MONEY" | "MPESA" | "CINETPAY" | "MOCK">("MOCK");
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
@@ -106,9 +107,25 @@ export default function VentesPage() {
           setProcessing(false);
           return;
         }
+        if (mmProvider === "CINETPAY" && (!clientName.trim() || !clientEmail.trim())) {
+          setMessage({ type: "error", text: "Nom du client et email requis pour un paiement CinetPay" });
+          setProcessing(false);
+          return;
+        }
+        const [clientFirstName, ...rest] = clientName.trim().split(/\s+/);
+        const clientLastName = rest.join(" ") || clientFirstName || "Client";
+
         const charge = await apiPost<{ transaction: { id: string; status: string; paymentUrl?: string | null }; message: string }>(
           "/api/payments/mobile-money",
-          { storeId: activeStore.storeId, provider: mmProvider, phone: clientPhone, amount: total }
+          {
+            storeId: activeStore.storeId,
+            provider: mmProvider,
+            phone: clientPhone,
+            amount: total,
+            clientFirstName,
+            clientLastName,
+            clientEmail: clientEmail || undefined,
+          }
         );
 
         if (charge.transaction.status === "ECHEC") {
@@ -136,6 +153,7 @@ export default function VentesPage() {
       setCart([]);
       setClientName("");
       setClientPhone("");
+      setClientEmail("");
       load();
     } catch (err) {
       if (err instanceof ApiClientError) {
@@ -156,6 +174,7 @@ export default function VentesPage() {
         setCart([]);
         setClientName("");
         setClientPhone("");
+        setClientEmail("");
         syncPendingSales();
       }
     } finally {
@@ -252,6 +271,15 @@ export default function VentesPage() {
                 <option value="MPESA">M-Pesa</option>
               </select>
               <input className="input" placeholder="Numéro de téléphone" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
+              {mmProvider === "CINETPAY" && (
+                <input
+                  className="input"
+                  type="email"
+                  placeholder="Email du client (requis par CinetPay)"
+                  value={clientEmail}
+                  onChange={(e) => setClientEmail(e.target.value)}
+                />
+              )}
             </>
           )}
         </div>

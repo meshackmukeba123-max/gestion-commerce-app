@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       ? await req.json()
       : (Object.fromEntries((await req.formData()).entries()) as Record<string, string>);
 
-    const transactionId = body.cpm_trans_id || body.transaction_id;
+    const transactionId = body.merchant_transaction_id || body.cpm_trans_id || body.transaction_id;
     if (!transactionId) {
       return NextResponse.json({ ok: false, error: "transaction_id manquant" }, { status: 400 });
     }

@@ -26,6 +26,9 @@ export async function POST(req: Request) {
       amount: parsed.data.amount,
       currency: store.currency,
       reference: parsed.data.saleId ?? `TX-${Date.now()}`,
+      clientFirstName: parsed.data.clientFirstName,
+      clientLastName: parsed.data.clientLastName,
+      clientEmail: parsed.data.clientEmail || undefined,
     });
 
     const tx = await db.mobileMoneyTransaction.create({

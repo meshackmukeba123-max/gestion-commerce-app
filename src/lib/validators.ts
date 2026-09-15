@@ -98,4 +98,8 @@ export const mobileMoneyChargeSchema = z.object({
   phone: z.string().min(6, "Numéro de téléphone invalide"),
   amount: z.coerce.number().positive(),
   saleId: z.string().optional(),
+  // Requis par CinetPay uniquement.
+  clientFirstName: z.string().optional(),
+  clientLastName: z.string().optional(),
+  clientEmail: z.string().email().optional().or(z.literal("")),
 });

@@ -216,25 +216,46 @@ parcours de vente sans aucune configuration.
 
 ### CinetPay — configuration (recommandé pour Orange Money / Airtel Money / MTN Money)
 
+✅ **Testé de bout en bout contre le vrai sandbox CinetPay** : authentification, génération du
+lien de paiement (`https://secure.cinetpay.net/checkout/...`) et suivi de statut fonctionnent.
+
 Comme Orange Money direct, CinetPay génère un **lien de paiement** que le client ouvre
 lui-même — la page CinetPay lui propose alors de choisir son opérateur (Orange Money, Airtel
 Money, MTN Money…) et de valider. La confirmation arrive via webhook
 (`/api/payments/mobile-money/cinetpay-callback`), qui **re-vérifie activement** le statut auprès
-de CinetPay avant de le considérer fiable (recommandation officielle CinetPay).
+de CinetPay (`GET /v1/payment/{id}`) avant de le considérer fiable — CinetPay déconseille
+explicitement de faire confiance au contenu brut du webhook.
 
-1. Créez un compte gratuit sur [cinetpay.com](https://cinetpay.com) (mode test disponible
-   immédiatement, sans dossier marchand complet).
-2. Dans le tableau de bord → **Intégration**, récupérez votre `APIKEY` et `SITE_ID`.
-3. Renseignez `CINETPAY_APIKEY`, `CINETPAY_SITE_ID` dans `.env`.
-4. Renseignez `CINETPAY_NOTIFY_URL` avec une URL **publique HTTPS**, ex:
+L'API CinetPay v1 utilise une **authentification par jeton** : chaque appel commence par un
+`POST /v1/oauth/login` avec `api_key`/`api_password` pour obtenir un jeton, envoyé ensuite en
+`Authorization: Bearer` — tout est déjà géré par le code, vous n'avez qu'à fournir les
+identifiants.
+
+1. Créez un compte gratuit sur [cinetpay.com](https://cinetpay.com) (mode test/sandbox
+   disponible immédiatement, sans dossier marchand complet).
+2. Dans le tableau de bord → **Développeur → Accès API**, copiez votre `APIKEY`.
+3. Sur la même page, cliquez **"Définir le mot de passe API"** — le mot de passe ne s'affiche
+   **qu'une seule fois** après création, copiez-le immédiatement.
+4. Renseignez `CINETPAY_APIKEY` et `CINETPAY_API_PASSWORD` dans `.env` (`CINETPAY_ENV=sandbox`
+   par défaut).
+5. Renseignez `CINETPAY_NOTIFY_URL` avec une URL **publique HTTPS**, ex:
    `https://votre-app.vercel.app/api/payments/mobile-money/cinetpay-callback` (comme pour
    M-Pesa, `localhost` ne fonctionne pas — utilisez ngrok en local).
-5. Sur la page **Vente (caisse)**, choisissez "Mobile Money" → fournisseur "CinetPay", saisissez
-   le numéro du client, puis ouvrez le lien de paiement généré pour tester en mode test CinetPay.
+6. ⚠️ **Liste blanche IP** : même si le tableau de bord affiche "Aucune IP configurée = accès
+   libre", l'API a en pratique refusé nos appels tant qu'aucune IP n'était explicitement
+   ajoutée (`API & sécurité → Liste Blanche IP`). Ajoutez l'IP sortante de votre machine pour
+   tester en local. **En production sur Vercel, les IP sortantes ne sont pas fixes par défaut**
+   — contactez le support CinetPay pour désactiver la restriction ou obtenir une solution d'IP
+   fixe avant de mettre en production.
+7. Sur la page **Vente (caisse)**, choisissez "Mobile Money" → fournisseur "CinetPay". CinetPay
+   exige en plus **le nom et l'email du client** (champs affichés uniquement pour ce
+   fournisseur) — saisissez-les, puis ouvrez le lien de paiement généré pour tester.
 
 **Passer en mode réel :** complétez le dossier marchand CinetPay (KYC) depuis leur tableau de
-bord — les mêmes `APIKEY`/`SITE_ID` continuent de fonctionner, seul le compte bascule de test à
-réel.
+bord, puis définissez `CINETPAY_ENV=production` — le domaine de l'API change aussi
+(`api.cinetpay.net` en sandbox → `api.cinetpay.co` en production, attention au TLD différent).
+Un compte `api_key`/`api_password` est rattaché à **un seul pays** : pour opérer dans plusieurs
+pays, un compte marchand dédié par pays est nécessaire (à demander à CinetPay).
 
 ### M-Pesa (Daraja) — configuration
 
@@ -368,11 +389,16 @@ L'application est un projet Next.js standard : toute plateforme supportant `npm 
 
 ## Limites connues
 
-- CinetPay, M-Pesa, Airtel Money et Orange Money sont intégrés réellement. CinetPay, M-Pesa et
-  Airtel ont un compte test/sandbox gratuit en libre-service. **Orange Money direct nécessite un
+- CinetPay, M-Pesa, Airtel Money et Orange Money sont intégrés réellement. **CinetPay a été
+  testé de bout en bout contre leur sandbox réel** (authentification, lien de paiement, suivi de
+  statut). M-Pesa et Airtel ont un compte test/sandbox gratuit en libre-service mais n'ont pas pu
+  être testés contre un vrai paiement (pas de compte obtenu). **Orange Money direct nécessite un
   accord marchand séparé** (pas juste un compte developer.orange.com — constaté en pratique,
   voir la section Orange Money ci-dessus) : utilisez CinetPay en attendant, qui couvre Orange
-  Money sans cet accord. Les détails exacts de l'API CinetPay/Orange Money n'ont pas pu être
-  testés contre un vrai paiement — ajustez si besoin une fois vos identifiants obtenus.
+  Money sans cet accord.
+- **CinetPay applique une liste blanche IP** même quand le tableau de bord semble indiquer
+  "aucune restriction" — voir la section CinetPay ci-dessus pour le contournement en local, et
+  anticiper une solution d'IP fixe (ou contacter leur support) avant la mise en production sur
+  Vercel (IP sortantes non fixes par défaut).
 - Le mode hors-ligne couvre les ventes ; les autres actions (gestion de stock, fournisseurs…)
   nécessitent une connexion.
