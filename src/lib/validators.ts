@@ -94,7 +94,7 @@ export const userInviteSchema = z.object({
 });
 
 export const mobileMoneyChargeSchema = z.object({
-  provider: z.enum(["ORANGE_MONEY", "AIRTEL_MONEY", "MPESA", "MOCK"]),
+  provider: z.enum(["ORANGE_MONEY", "AIRTEL_MONEY", "MPESA", "CINETPAY", "MOCK"]),
   phone: z.string().min(6, "Numéro de téléphone invalide"),
   amount: z.coerce.number().positive(),
   saleId: z.string().optional(),

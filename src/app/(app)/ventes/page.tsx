@@ -20,7 +20,7 @@ export default function VentesPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("MAGASIN");
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
-  const [mmProvider, setMmProvider] = useState<"ORANGE_MONEY" | "AIRTEL_MONEY" | "MPESA" | "MOCK">("MOCK");
+  const [mmProvider, setMmProvider] = useState<"ORANGE_MONEY" | "AIRTEL_MONEY" | "MPESA" | "CINETPAY" | "MOCK">("MOCK");
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -246,8 +246,9 @@ export default function VentesPage() {
             <>
               <select className="input" value={mmProvider} onChange={(e) => setMmProvider(e.target.value as typeof mmProvider)}>
                 <option value="MOCK">Démo (test)</option>
-                <option value="ORANGE_MONEY">Orange Money</option>
-                <option value="AIRTEL_MONEY">Airtel Money</option>
+                <option value="CINETPAY">CinetPay (Orange/Airtel/MTN Money…)</option>
+                <option value="ORANGE_MONEY">Orange Money (direct)</option>
+                <option value="AIRTEL_MONEY">Airtel Money (direct)</option>
                 <option value="MPESA">M-Pesa</option>
               </select>
               <input className="input" placeholder="Numéro de téléphone" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
@@ -262,7 +263,7 @@ export default function VentesPage() {
             rel="noopener noreferrer"
             className="btn-secondary block w-full text-center"
           >
-            🔗 Ouvrir le lien de paiement Orange Money
+            🔗 Ouvrir le lien de paiement mobile money
           </a>
         )}
 

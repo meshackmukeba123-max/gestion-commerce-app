@@ -188,17 +188,42 @@ interface commune (`chargeMobileMoney`) avec un fournisseur par opérateur :
 
 - **MOCK** (démo) : fonctionne immédiatement, sans compte marchand, pour tester tout le parcours
   de vente. Paiement simulé réussi instantanément.
-- **MPESA** : intégration **réelle** (API Daraja de Safaricom, STK Push / "Lipa Na M-Pesa
-  Online") — voir ci-dessous.
-- **AIRTEL_MONEY** : intégration **réelle** (Airtel Money OpenAPI, invite USSD sur le téléphone,
-  même principe que M-Pesa) — voir ci-dessous.
-- **ORANGE_MONEY** : intégration **réelle** (API Web Payment) — génère un **lien de paiement**
-  que le client ouvre lui-même (le flux est différent : pas d'invite directe sur le téléphone) —
-  voir ci-dessous.
+- **CINETPAY** (recommandé) : intégration **réelle** via l'agrégateur
+  [CinetPay](https://cinetpay.com), qui donne accès à Orange Money, Airtel Money, MTN Money,
+  Moov Money et carte bancaire avec **une seule inscription** — pas besoin d'accord marchand
+  séparé avec chaque opérateur. Voir ci-dessous.
+- **MPESA** : intégration **réelle** directe (API Daraja de Safaricom, STK Push / "Lipa Na
+  M-Pesa Online") — voir ci-dessous.
+- **AIRTEL_MONEY**, **ORANGE_MONEY** : intégrations **réelles** directes, pour les commerçants
+  qui ont déjà un accord marchand avec l'opérateur (voir "Limites connues" — l'API Orange Money
+  n'est en général **pas** accessible en libre-service via un simple compte developer.orange.com ;
+  préférez CinetPay si vous n'avez pas déjà cet accord).
 
-Pour les trois, tant que les clés d'API ne sont pas configurées dans `.env`, un message d'erreur
+Pour tous, tant que les clés d'API ne sont pas configurées dans `.env`, un message d'erreur
 clair s'affiche à la caisse (pas de crash) — le mode MOCK reste disponible pour tester le
 parcours de vente sans aucune configuration.
+
+### CinetPay — configuration (recommandé pour Orange Money / Airtel Money / MTN Money)
+
+Comme Orange Money direct, CinetPay génère un **lien de paiement** que le client ouvre
+lui-même — la page CinetPay lui propose alors de choisir son opérateur (Orange Money, Airtel
+Money, MTN Money…) et de valider. La confirmation arrive via webhook
+(`/api/payments/mobile-money/cinetpay-callback`), qui **re-vérifie activement** le statut auprès
+de CinetPay avant de le considérer fiable (recommandation officielle CinetPay).
+
+1. Créez un compte gratuit sur [cinetpay.com](https://cinetpay.com) (mode test disponible
+   immédiatement, sans dossier marchand complet).
+2. Dans le tableau de bord → **Intégration**, récupérez votre `APIKEY` et `SITE_ID`.
+3. Renseignez `CINETPAY_APIKEY`, `CINETPAY_SITE_ID` dans `.env`.
+4. Renseignez `CINETPAY_NOTIFY_URL` avec une URL **publique HTTPS**, ex:
+   `https://votre-app.vercel.app/api/payments/mobile-money/cinetpay-callback` (comme pour
+   M-Pesa, `localhost` ne fonctionne pas — utilisez ngrok en local).
+5. Sur la page **Vente (caisse)**, choisissez "Mobile Money" → fournisseur "CinetPay", saisissez
+   le numéro du client, puis ouvrez le lien de paiement généré pour tester en mode test CinetPay.
+
+**Passer en mode réel :** complétez le dossier marchand CinetPay (KYC) depuis leur tableau de
+bord — les mêmes `APIKEY`/`SITE_ID` continuent de fonctionner, seul le compte bascule de test à
+réel.
 
 ### M-Pesa (Daraja) — configuration
 
@@ -246,7 +271,14 @@ ré-interrogé activement auprès d'Airtel à chaque fois que le frontend vérif
 **Passer en production :** obtenez un compte marchand actif auprès d'Airtel, définissez
 `AIRTEL_ENV=production`.
 
-### Orange Money (Web Payment) — configuration
+### Orange Money (Web Payment, intégration directe) — configuration
+
+⚠️ **Constaté en pratique** : l'API Orange Money Web Payment n'apparaît pas dans le catalogue
+en libre-service de [developer.orange.com](https://developer.orange.com) (recherche "Orange
+Money" / "Payment" / "Collect" infructueuse) — l'accès semble nécessiter un accord commercial
+direct avec l'équipe Orange Money de votre pays, pas juste un compte développeur gratuit.
+**Utilisez CinetPay ci-dessus** en attendant, il couvre Orange Money sans cet accord séparé. Le
+code ci-dessous reste disponible pour le jour où vous obtiendrez cet accès direct.
 
 Contrairement à M-Pesa/Airtel, Orange Money (API standard) ne pousse pas d'invite directement
 sur le téléphone : la requête génère un **lien de paiement** que le client doit ouvrir
@@ -327,10 +359,11 @@ L'application est un projet Next.js standard : toute plateforme supportant `npm 
 
 - Les icônes PWA fournies sont en SVG (`public/icons/icon.svg`) ; pour une publication plus
   large (certains anciens appareils Android), remplacez-les par des PNG 192×192 et 512×512.
-- M-Pesa, Airtel Money et Orange Money sont intégrés réellement (M-Pesa et Airtel ont un
-  sandbox/UAT gratuit sans compte marchand ; Orange Money nécessite un compte développeur —
-  voir les sections ci-dessus). Les détails exacts de l'API Orange Money varient selon le pays
-  et n'ont pas pu être testés contre un vrai compte — ajustez si besoin une fois vos identifiants
-  obtenus.
+- CinetPay, M-Pesa, Airtel Money et Orange Money sont intégrés réellement. CinetPay, M-Pesa et
+  Airtel ont un compte test/sandbox gratuit en libre-service. **Orange Money direct nécessite un
+  accord marchand séparé** (pas juste un compte developer.orange.com — constaté en pratique,
+  voir la section Orange Money ci-dessus) : utilisez CinetPay en attendant, qui couvre Orange
+  Money sans cet accord. Les détails exacts de l'API CinetPay/Orange Money n'ont pas pu être
+  testés contre un vrai paiement — ajustez si besoin une fois vos identifiants obtenus.
 - Le mode hors-ligne couvre les ventes ; les autres actions (gestion de stock, fournisseurs…)
   nécessitent une connexion.

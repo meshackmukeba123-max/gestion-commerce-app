@@ -247,6 +247,7 @@ enum MobileMoneyProvider {
   ORANGE_MONEY
   AIRTEL_MONEY
   MPESA
+  CINETPAY
   MOCK
 }
 

@@ -8,7 +8,7 @@
  * parcours de vente sans compte marchand réel.
  */
 
-export type MobileMoneyProvider = "ORANGE_MONEY" | "AIRTEL_MONEY" | "MPESA" | "MOCK";
+export type MobileMoneyProvider = "ORANGE_MONEY" | "AIRTEL_MONEY" | "MPESA" | "CINETPAY" | "MOCK";
 
 export type ChargeRequest = {
   provider: MobileMoneyProvider;
@@ -386,11 +386,103 @@ class MPesaGateway implements MobileMoneyGateway {
   }
 }
 
+/**
+ * Intégration CinetPay réelle — agrégateur de paiement mobile money très utilisé en Afrique
+ * francophone (RDC, Côte d'Ivoire, Sénégal, Cameroun…). Une seule API donne accès à Orange
+ * Money, Airtel Money, MTN Money, Moov Money et carte bancaire, sans négocier un accord
+ * marchand séparé avec chaque opérateur — inscription et sandbox gratuits sur cinetpay.com.
+ *
+ * Flux "lien de paiement" comme Orange Money : le client ouvre le lien, choisit son moyen de
+ * paiement (Orange Money, Airtel Money…) et valide. Confirmation via webhook
+ * `/api/payments/mobile-money/cinetpay-callback`, qui re-vérifie le statut auprès de CinetPay
+ * avant de le considérer fiable (recommandation officielle CinetPay : ne jamais faire confiance
+ * au contenu brut du webhook).
+ */
+const CINETPAY_BASE_URL = "https://api-checkout.cinetpay.com/v2";
+
+class CinetPayGateway implements MobileMoneyGateway {
+  async charge(req: ChargeRequest): Promise<ChargeResult> {
+    const apikey = process.env.CINETPAY_APIKEY;
+    const siteId = process.env.CINETPAY_SITE_ID;
+    if (!apikey || !siteId) {
+      return {
+        status: "ECHEC",
+        message:
+          "CINETPAY_APIKEY / CINETPAY_SITE_ID non configurées. Créez un compte gratuit sur cinetpay.com (mode test disponible) — voir README.md.",
+      };
+    }
+    const notifyUrl = process.env.CINETPAY_NOTIFY_URL;
+    if (!notifyUrl) {
+      return {
+        status: "ECHEC",
+        message: "CINETPAY_NOTIFY_URL non configurée (URL publique HTTPS requise par CinetPay). Voir .env.example.",
+      };
+    }
+    const returnUrl = process.env.CINETPAY_RETURN_URL || notifyUrl;
+    const transactionId = req.reference.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 30) || `TX${Date.now()}`;
+
+    try {
+      const res = await fetch(`${CINETPAY_BASE_URL}/payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apikey,
+          site_id: siteId,
+          transaction_id: transactionId,
+          amount: Math.max(100, Math.round(req.amount)), // CinetPay exige un montant minimum (généralement 100 XOF/XAF/CDF)
+          currency: req.currency,
+          description: "Paiement boutique",
+          notify_url: notifyUrl,
+          return_url: returnUrl,
+          channels: "MOBILE_MONEY",
+          customer_phone_number: req.phone,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.code !== "201" || !data.data?.payment_url) {
+        return { status: "ECHEC", message: data.message || data.description || "Échec de la création du paiement CinetPay." };
+      }
+
+      return {
+        status: "EN_ATTENTE",
+        externalRef: transactionId,
+        paymentUrl: data.data.payment_url as string,
+        message: "Lien de paiement généré : faites-le ouvrir ou scanner par le client (Orange Money, Airtel Money, MTN Money…).",
+      };
+    } catch (err) {
+      return { status: "ECHEC", message: err instanceof Error ? err.message : "Erreur CinetPay inconnue." };
+    }
+  }
+
+  async checkStatus(externalRef: string): Promise<"EN_ATTENTE" | "REUSSI" | "ECHEC"> {
+    const apikey = process.env.CINETPAY_APIKEY;
+    const siteId = process.env.CINETPAY_SITE_ID;
+    if (!apikey || !siteId) return "EN_ATTENTE";
+    try {
+      const res = await fetch(`${CINETPAY_BASE_URL}/payment/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apikey, site_id: siteId, transaction_id: externalRef }),
+      });
+      const data = await res.json();
+      const status = data?.data?.status as string | undefined;
+      if (status === "ACCEPTED") return "REUSSI";
+      if (status === "REFUSED" || status === "CANCELLED") return "ECHEC";
+      return "EN_ATTENTE";
+    } catch {
+      return "EN_ATTENTE";
+    }
+  }
+}
+
 const gateways: Record<MobileMoneyProvider, MobileMoneyGateway> = {
   MOCK: new MockGateway(),
   ORANGE_MONEY: new OrangeMoneyGateway(),
   AIRTEL_MONEY: new AirtelMoneyGateway(),
   MPESA: new MPesaGateway(),
+  CINETPAY: new CinetPayGateway(),
 };
 
 export async function chargeMobileMoney(req: ChargeRequest): Promise<ChargeResult> {

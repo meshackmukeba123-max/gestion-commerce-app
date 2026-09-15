@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/api/auth/login",
   "/api/payments/mobile-money/mpesa-callback",
   "/api/payments/mobile-money/orange-callback",
+  "/api/payments/mobile-money/cinetpay-callback",
 ];
 
 export async function middleware(req: NextRequest) {
