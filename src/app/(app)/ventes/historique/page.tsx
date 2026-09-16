@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, withStore } from "@/lib/api-client";
 
@@ -47,6 +48,7 @@ export default function SalesHistoryPage() {
               <th>Paiement</th>
               <th>Vendeur</th>
               <th className="text-right">Total</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -58,10 +60,19 @@ export default function SalesHistoryPage() {
                   <td>{s.paymentMethod}</td>
                   <td>{s.user?.name || "-"}</td>
                   <td className="text-right font-medium">{s.total.toLocaleString("fr-FR")}</td>
+                  <td>
+                    <Link
+                      href={`/ventes/${s.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-emerald-700 hover:underline dark:text-emerald-400"
+                    >
+                      Reçu
+                    </Link>
+                  </td>
                 </tr>
                 {expanded === s.id && (
                   <tr>
-                    <td colSpan={5} className="bg-black/[0.02] dark:bg-white/[0.03]">
+                    <td colSpan={6} className="bg-black/[0.02] dark:bg-white/[0.03]">
                       <div className="p-2">
                         <table className="table-base">
                           <thead>
@@ -94,7 +105,7 @@ export default function SalesHistoryPage() {
             ))}
             {sales.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-neutral-500">
+                <td colSpan={6} className="py-6 text-center text-neutral-500">
                   Aucune vente enregistrée.
                 </td>
               </tr>

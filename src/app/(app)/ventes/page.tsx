@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, apiPost, withStore, ApiClientError } from "@/lib/api-client";
 import { BarcodeScannerButton } from "@/components/stock/BarcodeScannerButton";
@@ -25,6 +26,7 @@ export default function VentesPage() {
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [lastSaleId, setLastSaleId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     apiGet<Product[]>(withStore("/api/products", activeStore.storeId)).then(setProducts);
@@ -91,6 +93,7 @@ export default function VentesPage() {
     setMessage(null);
     setPaymentUrl(null);
     setProcessing(true);
+    setLastSaleId(null);
 
     const saleBody = {
       storeId: activeStore.storeId,
@@ -148,8 +151,9 @@ export default function VentesPage() {
         }
       }
 
-      await apiPost("/api/sales", saleBody);
+      const createdSale = await apiPost<{ id: string }>("/api/sales", saleBody);
       setMessage({ type: "success", text: "Vente enregistrée avec succès." });
+      setLastSaleId(createdSale.id);
       setCart([]);
       setClientName("");
       setClientPhone("");
@@ -307,6 +311,12 @@ export default function VentesPage() {
           >
             {message.text}
           </p>
+        )}
+
+        {lastSaleId && (
+          <Link href={`/ventes/${lastSaleId}`} className="btn-secondary block w-full text-center">
+            🧾 Voir / imprimer le reçu
+          </Link>
         )}
 
         <button onClick={checkout} disabled={cart.length === 0 || processing} className="btn-primary w-full">
