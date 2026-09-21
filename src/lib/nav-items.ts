@@ -11,6 +11,7 @@ import {
   IconStore,
   IconUsers,
   IconSettings,
+  IconHelp,
 } from "@/components/layout/icons";
 
 export type NavItem = {
@@ -33,4 +34,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/boutiques", label: "Boutiques", icon: IconStore, roles: ["ADMIN"] },
   { href: "/utilisateurs", label: "Utilisateurs", icon: IconUsers, roles: ["ADMIN"] },
   { href: "/parametres", label: "Paramètres", icon: IconSettings, roles: ["ADMIN"] },
+  { href: "/aide", label: "Aide", icon: IconHelp, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
 ];
