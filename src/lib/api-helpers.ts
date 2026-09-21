@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { getSession, type SessionPayload } from "./auth";
 import { can } from "./rbac";
 
@@ -27,6 +28,7 @@ export function handleApiError(err: unknown) {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }
   console.error(err);
+  Sentry.captureException(err);
   return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
 }
 

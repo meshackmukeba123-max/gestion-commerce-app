@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -38,7 +39,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err) {
+    console.error("Orange Money callback error:", err);
+    Sentry.captureException(err, { tags: { provider: "orange", flow: "webhook-callback" } });
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }

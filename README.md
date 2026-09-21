@@ -17,7 +17,9 @@ mobile money.
 8. [Intégration Mobile Money](#intégration-mobile-money)
 9. [Module fiscal](#module-fiscal)
 10. [Déploiement en production](#déploiement-en-production)
-11. [Limites connues](#limites-connues)
+11. [Intégration continue (CI)](#intégration-continue-ci)
+12. [Suivi des erreurs (Sentry)](#suivi-des-erreurs-sentry)
+13. [Limites connues](#limites-connues)
 
 ## Fonctionnalités
 
@@ -386,6 +388,35 @@ puis renseignez son URL de connexion dans `DATABASE_URL`.
 
 L'application est un projet Next.js standard : toute plateforme supportant `npm run build` puis
 `npm run start` (Node.js 18+) convient. Pensez à fournir les mêmes variables d'environnement.
+
+## Intégration continue (CI)
+
+Un workflow GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) tourne à
+chaque push et pull request sur `main` : installation des dépendances, génération du client
+Prisma, vérification des types, lint, tests (`npm test`) puis build complet (`npm run build`).
+Une régression est ainsi détectée avant même que Vercel ne tente de déployer.
+
+## Suivi des erreurs (Sentry)
+
+Le suivi d'erreurs en production ([Sentry](https://sentry.io)) est intégré via `@sentry/nextjs` :
+
+- Toute erreur serveur renvoyée par une route API (via `handleApiError`, voir
+  [`src/lib/api-helpers.ts`](src/lib/api-helpers.ts)) est remontée automatiquement.
+- Les webhooks de paiement mobile money (CinetPay, M-Pesa, Orange Money) capturent aussi leurs
+  erreurs explicitement, pour ne jamais laisser un paiement échouer silencieusement.
+- Les erreurs de rendu React (client) sont capturées via
+  [`src/app/global-error.tsx`](src/app/global-error.tsx).
+
+**Sans configuration, le suivi est simplement désactivé** (aucun appel réseau, aucun impact sur
+les performances ou le build). Pour l'activer :
+
+1. Créez un compte gratuit sur [sentry.io](https://sentry.io) et un projet de type "Next.js".
+2. Copiez son DSN et renseignez `SENTRY_DSN` et `NEXT_PUBLIC_SENTRY_DSN` (même valeur) dans les
+   variables d'environnement Vercel (`vercel env add SENTRY_DSN production` etc.) ou dans
+   `.env.local` en développement.
+3. (Optionnel) Pour des messages d'erreur avec la vraie source du code (source maps) plutôt que du
+   code minifié, ajoutez aussi `SENTRY_ORG`, `SENTRY_PROJECT` et `SENTRY_AUTH_TOKEN`
+   (Organisation → Auth Tokens sur Sentry).
 
 ## Limites connues
 

@@ -1,28 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { countPendingSales } from "@/lib/offline/db";
 import { syncPendingSales } from "@/lib/offline/sync";
 
+function subscribeToOnlineStatus(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
+
 export function OfflineBadge() {
-  const [online, setOnline] = useState(true);
+  const online = useSyncExternalStore(
+    subscribeToOnlineStatus,
+    () => navigator.onLine,
+    () => true,
+  );
   const [pending, setPending] = useState(0);
 
   useEffect(() => {
-    setOnline(navigator.onLine);
-    const update = () => setOnline(navigator.onLine);
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-
     const refreshPending = () => countPendingSales().then(setPending);
     refreshPending();
     const interval = setInterval(refreshPending, 5000);
-
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   if (online && pending === 0) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -43,7 +44,9 @@ export async function POST(req: Request) {
 
     // Safaricom attend cette forme de réponse pour considérer le webhook comme reçu.
     return NextResponse.json({ ResultCode: 0, ResultDesc: "Accepted" });
-  } catch {
+  } catch (err) {
+    console.error("M-Pesa callback error:", err);
+    Sentry.captureException(err, { tags: { provider: "mpesa", flow: "webhook-callback" } });
     return NextResponse.json({ ResultCode: 1, ResultDesc: "Erreur serveur" });
   }
 }

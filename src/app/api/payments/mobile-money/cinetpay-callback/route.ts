@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { db } from "@/lib/db";
 import { checkMobileMoneyStatus } from "@/lib/payments/mobileMoney";
 
@@ -33,7 +34,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err) {
+    console.error("CinetPay callback error:", err);
+    Sentry.captureException(err, { tags: { provider: "cinetpay", flow: "webhook-callback" } });
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }
