@@ -8,8 +8,10 @@ export function AppShell({ session, children }: { session: Session; children: Re
   return (
     <SessionProvider initialSession={session}>
       <div className="flex min-h-screen flex-col">
-        <AppBar />
-        <NavStrip />
+        <div className="no-print">
+          <AppBar />
+          <NavStrip />
+        </div>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
       </div>
     </SessionProvider>

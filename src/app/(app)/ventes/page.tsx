@@ -154,6 +154,7 @@ export default function VentesPage() {
       const created = await apiPost<{ id: string }>("/api/sales", saleBody);
       setMessage({ type: "success", text: "Vente enregistrée avec succès." });
       setLastSaleId(created.id);
+      window.open(`/ventes/${created.id}?print=1`, "_blank");
       setCart([]);
       setClientName("");
       setClientPhone("");

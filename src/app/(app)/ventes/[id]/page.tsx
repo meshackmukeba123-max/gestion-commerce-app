@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
 
 type SaleDetail = {
@@ -20,8 +21,8 @@ type SaleDetail = {
   items: { quantity: number; unitPrice: number; total: number; product: { name: string; unit: string } }[];
 };
 
-export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+function SaleDetail({ id }: { id: string }) {
+  const searchParams = useSearchParams();
   const [sale, setSale] = useState<SaleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +32,12 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
       .catch(() => setError("Vente introuvable."));
   }, [id]);
 
+  useEffect(() => {
+    if (!sale || searchParams.get("print") !== "1") return;
+    const timer = setTimeout(() => window.print(), 300);
+    return () => clearTimeout(timer);
+  }, [sale, searchParams]);
+
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!sale) return <p className="text-sm text-neutral-500">Chargement…</p>;
 
@@ -38,19 +45,25 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="no-print flex items-center justify-between">
         <div>
           <Link href="/ventes/historique" className="text-sm text-neutral-500 hover:underline">
             ← Historique des ventes
           </Link>
           <h1 className="text-xl font-semibold">Facture {sale.invoiceNumber ?? "—"}</h1>
         </div>
-        {sale.invoiceNumber && (
-          <a href={`/api/sales/${sale.id}?format=pdf`} className="btn-primary">
-            📄 Télécharger la facture (PDF)
-          </a>
-        )}
+        <div className="flex gap-2">
+          <button onClick={() => window.print()} className="btn-secondary">
+            🖨️ Imprimer
+          </button>
+          {sale.invoiceNumber && (
+            <a href={`/api/sales/${sale.id}?format=pdf`} className="btn-primary">
+              📄 Télécharger (PDF)
+            </a>
+          )}
+        </div>
       </div>
+      <h1 className="print-only text-xl font-semibold">Facture {sale.invoiceNumber ?? "—"}</h1>
 
       <div className="card space-y-4">
         <div className="flex items-start justify-between border-b border-black/10 pb-4 dark:border-white/10">
@@ -130,5 +143,14 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  return (
+    <Suspense>
+      <SaleDetail id={id} />
+    </Suspense>
   );
 }
