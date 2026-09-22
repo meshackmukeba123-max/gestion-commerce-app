@@ -1,11 +1,13 @@
 "use client";
 
 import { Fragment, useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, withStore } from "@/lib/api-client";
 
 type Sale = {
   id: string;
+  invoiceNumber: string | null;
   clientName: string | null;
   paymentMethod: string;
   subtotal: number;
@@ -43,6 +45,7 @@ export default function SalesHistoryPage() {
           <thead>
             <tr>
               <th>Date</th>
+              <th>Facture</th>
               <th>Client</th>
               <th>Paiement</th>
               <th>Vendeur</th>
@@ -54,6 +57,19 @@ export default function SalesHistoryPage() {
               <Fragment key={s.id}>
                 <tr className="cursor-pointer" onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
                   <td>{new Date(s.createdAt).toLocaleString("fr-FR")}</td>
+                  <td>
+                    {s.invoiceNumber ? (
+                      <Link
+                        href={`/ventes/${s.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-emerald-600 hover:underline dark:text-emerald-400"
+                      >
+                        {s.invoiceNumber}
+                      </Link>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td>{s.clientName || "-"}</td>
                   <td>{s.paymentMethod}</td>
                   <td>{s.user?.name || "-"}</td>
@@ -61,7 +77,7 @@ export default function SalesHistoryPage() {
                 </tr>
                 {expanded === s.id && (
                   <tr>
-                    <td colSpan={5} className="bg-black/[0.02] dark:bg-white/[0.03]">
+                    <td colSpan={6} className="bg-black/[0.02] dark:bg-white/[0.03]">
                       <div className="p-2">
                         <table className="table-base">
                           <thead>
@@ -94,7 +110,7 @@ export default function SalesHistoryPage() {
             ))}
             {sales.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-neutral-500">
+                <td colSpan={6} className="py-6 text-center text-neutral-500">
                   Aucune vente enregistrée.
                 </td>
               </tr>

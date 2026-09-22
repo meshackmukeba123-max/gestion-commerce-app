@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, apiPost, withStore, ApiClientError } from "@/lib/api-client";
@@ -25,6 +26,7 @@ export default function VentesPage() {
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [lastSaleId, setLastSaleId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     apiGet<Product[]>(withStore("/api/products", activeStore.storeId)).then(setProducts);
@@ -90,6 +92,7 @@ export default function VentesPage() {
     if (cart.length === 0) return;
     setMessage(null);
     setPaymentUrl(null);
+    setLastSaleId(null);
     setProcessing(true);
 
     const saleBody = {
@@ -148,8 +151,9 @@ export default function VentesPage() {
         }
       }
 
-      await apiPost("/api/sales", saleBody);
+      const created = await apiPost<{ id: string }>("/api/sales", saleBody);
       setMessage({ type: "success", text: "Vente enregistrée avec succès." });
+      setLastSaleId(created.id);
       setCart([]);
       setClientName("");
       setClientPhone("");
@@ -307,6 +311,12 @@ export default function VentesPage() {
           >
             {message.text}
           </p>
+        )}
+
+        {lastSaleId && (
+          <Link href={`/ventes/${lastSaleId}`} className="btn-secondary block w-full text-center">
+            📄 Voir / télécharger la facture
+          </Link>
         )}
 
         <button onClick={checkout} disabled={cart.length === 0 || processing} className="btn-primary w-full">

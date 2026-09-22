@@ -83,6 +83,8 @@ export const storeSchema = z.object({
   phone: z.string().optional(),
   currency: z.string().default("CDF"),
   taxRate: z.coerce.number().min(0).max(100).default(16),
+  taxId: z.string().optional(),
+  rccm: z.string().optional(),
 });
 
 export const userInviteSchema = z.object({

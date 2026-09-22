@@ -40,6 +40,14 @@ export async function createSale(input: SaleInput) {
   }
 
   const sale = await db.$transaction(async (tx) => {
+    const updatedStore = await tx.store.update({
+      where: { id: input.storeId },
+      data: { invoiceCounter: { increment: 1 } },
+      select: { invoiceCounter: true },
+    });
+    const invoiceYear = (input.createdAt ? new Date(input.createdAt) : new Date()).getFullYear();
+    const invoiceNumber = `FA-${invoiceYear}-${String(updatedStore.invoiceCounter).padStart(6, "0")}`;
+
     const created = await tx.sale.create({
       data: {
         storeId: input.storeId,
@@ -49,6 +57,7 @@ export async function createSale(input: SaleInput) {
         paymentMethod: input.paymentMethod,
         paymentRef: input.paymentRef,
         offlineId: input.offlineId,
+        invoiceNumber,
         subtotal,
         taxAmount,
         total,
@@ -83,7 +92,7 @@ export async function createSale(input: SaleInput) {
     }
 
     return created;
-  });
+  }, { timeout: 15000 });
 
   return sale;
 }

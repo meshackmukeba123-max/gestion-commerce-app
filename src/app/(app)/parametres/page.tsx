@@ -4,7 +4,17 @@ import { useEffect, useState, useCallback } from "react";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, apiPut, ApiClientError } from "@/lib/api-client";
 
-type Store = { id: string; name: string; type: string; address: string | null; phone: string | null; currency: string; taxRate: number };
+type Store = {
+  id: string;
+  name: string;
+  type: string;
+  address: string | null;
+  phone: string | null;
+  currency: string;
+  taxRate: number;
+  taxId: string | null;
+  rccm: string | null;
+};
 
 export default function SettingsPage() {
   const { activeStore } = useSession();
@@ -31,6 +41,8 @@ export default function SettingsPage() {
         phone: store.phone ?? "",
         currency: store.currency,
         taxRate: store.taxRate,
+        taxId: store.taxId ?? "",
+        rccm: store.rccm ?? "",
       });
       setSaved(true);
     } catch (err) {
@@ -89,6 +101,21 @@ export default function SettingsPage() {
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Identifiant fiscal (NIF)</label>
+            <input className="input" value={store.taxId ?? ""} onChange={(e) => setStore({ ...store, taxId: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">N° RCCM</label>
+            <input className="input" value={store.rccm ?? ""} onChange={(e) => setStore({ ...store, rccm: e.target.value })} />
+          </div>
+        </div>
+        <p className="text-xs text-neutral-500">
+          Le NIF et le RCCM sont facultatifs mais apparaissent sur les factures générées lors des ventes, s&apos;ils
+          sont renseignés.
+        </p>
+
         <button type="submit" className="btn-primary w-full">
           Enregistrer
         </button>
