@@ -5,6 +5,9 @@ import Link from "next/link";
 import { apiGet, apiPost, apiPut } from "@/lib/api-client";
 import { Modal } from "@/components/ui/Modal";
 import { CustomerForm, type CustomerFormValues } from "@/components/clients/CustomerForm";
+import { useSession } from "@/components/providers/SessionProvider";
+import { useStoreInfo } from "@/components/providers/useStoreInfo";
+import { whatsappLink, countryCodeFromStorePhone, formatAmount } from "@/lib/whatsapp";
 
 type CustomerDetail = {
   id: string;
@@ -38,6 +41,8 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
   const [error, setError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const { activeStore } = useSession();
+  const store = useStoreInfo(activeStore.storeId);
 
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("MAGASIN");
@@ -85,6 +90,14 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
   if (!customer) return <p className="text-sm text-neutral-500">Chargement…</p>;
 
   const fmt = (n: number) => n.toLocaleString("fr-FR");
+  const reminderLink =
+    store && customer.balance > 0
+      ? whatsappLink(
+          customer.phone,
+          `Bonjour ${customer.name}, ici ${store.name}. Petit rappel : il reste ${formatAmount(customer.balance, store.currency)} à régler sur vos achats. Merci et à bientôt !`,
+          countryCodeFromStorePhone(store.phone)
+        )
+      : null;
 
   return (
     <div className="space-y-4">
@@ -99,9 +112,16 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
           </p>
           {customer.notes && <p className="text-sm text-neutral-500">{customer.notes}</p>}
         </div>
-        <button onClick={() => setEditOpen(true)} className="btn-secondary">
-          Modifier
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {reminderLink && (
+            <a href={reminderLink} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+              📱 Relancer par WhatsApp
+            </a>
+          )}
+          <button onClick={() => setEditOpen(true)} className="btn-secondary">
+            Modifier
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

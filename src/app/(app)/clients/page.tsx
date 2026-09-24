@@ -7,6 +7,8 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, apiPost, withStore } from "@/lib/api-client";
 import { Modal } from "@/components/ui/Modal";
 import { CustomerForm, type CustomerFormValues } from "@/components/clients/CustomerForm";
+import { useStoreInfo } from "@/components/providers/useStoreInfo";
+import { whatsappLink, countryCodeFromStorePhone, formatAmount } from "@/lib/whatsapp";
 
 type Customer = { id: string; name: string; phone: string | null; creditLimit: number | null; balance: number };
 
@@ -18,6 +20,15 @@ function ClientsList() {
   const [debtOnly, setDebtOnly] = useState(searchParams.get("debt") === "1");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const store = useStoreInfo(activeStore.storeId);
+  const reminder = (c: Customer) =>
+    store && c.balance > 0
+      ? whatsappLink(
+          c.phone,
+          `Bonjour ${c.name}, ici ${store.name}. Petit rappel : il reste ${formatAmount(c.balance, store.currency)} à régler sur vos achats. Merci et à bientôt !`,
+          countryCodeFromStorePhone(store.phone)
+        )
+      : null;
 
   const load = useCallback(() => {
     const url = withStore("/api/customers", activeStore.storeId) + (q ? `&q=${encodeURIComponent(q)}` : "") + (debtOnly ? "&debt=1" : "");
@@ -72,6 +83,7 @@ function ClientsList() {
               <th>Téléphone</th>
               <th className="text-right">Plafond</th>
               <th className="text-right">Reste dû</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -87,11 +99,23 @@ function ClientsList() {
                 <td className={`text-right font-medium ${c.balance > 0 ? "text-amber-600" : "text-neutral-400"}`}>
                   {c.balance.toLocaleString("fr-FR")}
                 </td>
+                <td className="text-right">
+                  {reminder(c) && (
+                    <a
+                      href={reminder(c)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                    >
+                      📱 Relancer
+                    </a>
+                  )}
+                </td>
               </tr>
             ))}
             {customers.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-6 text-center text-neutral-500">
+                <td colSpan={5} className="py-6 text-center text-neutral-500">
                   {debtOnly ? "Aucun client n'a de dette." : "Aucun client enregistré."}
                 </td>
               </tr>

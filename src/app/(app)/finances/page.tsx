@@ -74,6 +74,9 @@ export default function FinancesPage() {
               </option>
             ))}
           </select>
+          <Link href="/finances/produits" className="btn-secondary">
+            📦 Par produit
+          </Link>
           <a href={exportUrl("pdf")} className="btn-secondary">
             📄 PDF
           </a>

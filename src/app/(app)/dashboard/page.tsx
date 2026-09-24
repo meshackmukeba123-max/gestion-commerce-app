@@ -35,6 +35,7 @@ type Role = "ADMIN" | "GESTIONNAIRE" | "VENDEUR";
 const QUICK_ACTIONS: { href: string; label: string; icon: typeof IconSale; roles: Role[] }[] = [
   { href: "/ventes", label: "Nouvelle vente", icon: IconSale, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
   { href: "/clients", label: "Encaisser une dette", icon: IconCustomers, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
+  { href: "/stock/reapprovisionnement", label: "Que commander ?", icon: IconStock, roles: ["ADMIN", "GESTIONNAIRE"] },
   { href: "/stock/nouveau", label: "Nouveau produit", icon: IconStock, roles: ["ADMIN", "GESTIONNAIRE"] },
   { href: "/finances/depenses", label: "Nouvelle dépense", icon: IconExpense, roles: ["ADMIN", "GESTIONNAIRE"] },
   { href: "/finances", label: "Voir les rapports", icon: IconFinance, roles: ["ADMIN", "GESTIONNAIRE"] },

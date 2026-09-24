@@ -37,6 +37,15 @@ mobile money.
   acompte ou paiement différé depuis la caisse, suivi du « reste dû » par facture, encaissement
   des remboursements (répartis automatiquement sur les dettes les plus anciennes). Le total des
   créances apparaît sur le tableau de bord et dans les rapports.
+- **Analyse par produit** (Finances → « Par produit ») : quantités vendues, chiffre d'affaires,
+  coût d'achat et marge de chaque produit sur la période choisie (retours déduits), produits à
+  marge faible signalés, export Excel.
+- **Réapprovisionnement** (Stock → « À réapprovisionner ») : produits sous le seuil d'alerte ou qui
+  risquent la rupture, jours de stock restants d'après le rythme des ventes, quantité conseillée,
+  et création de la commande fournisseur en un clic.
+- **WhatsApp** : relance d'un client qui doit de l'argent (fiche client ou liste des clients) et
+  envoi du récapitulatif d'une facture, en message pré-rempli (le numéro local est complété avec
+  l'indicatif du numéro de la boutique, 243 par défaut).
 - **Inventaire physique** (Gestionnaire/Administrateur) : comptage produit par produit (saisie
   ou scan), écarts valorisés au prix d'achat, puis validation qui ajuste le stock et trace chaque
   ajustement dans les mouvements. Les ventes faites pendant l'inventaire ne créent pas de faux
