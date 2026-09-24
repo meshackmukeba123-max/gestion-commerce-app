@@ -64,6 +64,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         total: sale.total,
         cancelled: sale.cancelledAt ? { at: sale.cancelledAt, reason: sale.cancelReason } : null,
         balanceDue: sale.balanceDue,
+        timeZone: url.searchParams.get("tz") ?? undefined,
         returnedTotal: sale.returns.reduce((sum, r) => sum + r.total, 0),
       });
       return new NextResponse(pdf, {

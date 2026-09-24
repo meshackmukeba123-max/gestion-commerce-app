@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSession, requireStoreAccess, getStoreIdParam, handleApiError, ApiError } from "@/lib/api-helpers";
 import { buildFinancialReport } from "@/lib/reports";
 import { buildReportPdf } from "@/lib/export/pdf";
+import { pdfNumber } from "@/lib/export/invoice-pdf";
 import { buildExcelBuffer } from "@/lib/export/excel";
 
 export const runtime = "nodejs";
@@ -38,12 +39,12 @@ export async function GET(req: Request) {
         title: `Rapport financier — ${report.store.name}`,
         subtitle: label,
         kpis: [
-          { label: "Chiffre d'affaires HT", value: `${report.tax.chiffreAffairesHT} ${report.store.currency}` },
-          { label: "Taxe collectée", value: `${report.tax.taxeCollectee} ${report.store.currency}` },
-          { label: "Dépenses", value: `${report.totalExpenses} ${report.store.currency}` },
-          { label: "Bénéfice net", value: `${report.beneficeNet} ${report.store.currency}` },
-          { label: "Retours clients (TTC)", value: `${report.tax.montantRetoursTTC} ${report.store.currency}` },
-          { label: "Créances clients (à ce jour)", value: `${report.creancesClients} ${report.store.currency}` },
+          { label: "Chiffre d'affaires HT", value: `${pdfNumber(report.tax.chiffreAffairesHT)} ${report.store.currency}` },
+          { label: "Taxe collectée", value: `${pdfNumber(report.tax.taxeCollectee)} ${report.store.currency}` },
+          { label: "Dépenses", value: `${pdfNumber(report.totalExpenses)} ${report.store.currency}` },
+          { label: "Bénéfice net", value: `${pdfNumber(report.beneficeNet)} ${report.store.currency}` },
+          { label: "Retours clients (TTC)", value: `${pdfNumber(report.tax.montantRetoursTTC)} ${report.store.currency}` },
+          { label: "Créances clients (à ce jour)", value: `${pdfNumber(report.creancesClients)} ${report.store.currency}` },
         ],
         tables: [
           {

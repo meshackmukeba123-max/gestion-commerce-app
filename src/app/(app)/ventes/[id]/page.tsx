@@ -169,7 +169,10 @@ function SaleDetail({ id }: { id: string }) {
             🖨️ Imprimer
           </button>
           {sale.invoiceNumber && (
-            <a href={`/api/sales/${sale.id}?format=pdf`} className="btn-primary">
+            <a
+              href={`/api/sales/${sale.id}?format=pdf&tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`}
+              className="btn-primary"
+            >
               📄 Télécharger (PDF)
             </a>
           )}
