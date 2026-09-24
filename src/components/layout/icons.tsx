@@ -30,6 +30,25 @@ export function IconHistory({ className }: IconProps) {
   );
 }
 
+export function IconCustomers({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth={2} className={className}>
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20c.6-3.4 3.2-5.5 6.5-5.5s5.9 2.1 6.5 5.5" />
+      <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2" />
+    </svg>
+  );
+}
+
+export function IconInventory({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth={2} className={className}>
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M9 3v2h6V3M9 11l1.5 1.5L13 10M9 16.5l1.5 1.5L13 15.5" />
+    </svg>
+  );
+}
+
 export function IconStock({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth={2} className={className}>

@@ -7,10 +7,13 @@ import { apiGet, apiPost, withStore, ApiClientError } from "@/lib/api-client";
 import { BarcodeScannerButton } from "@/components/stock/BarcodeScannerButton";
 import { queueOfflineSale } from "@/lib/offline/db";
 import { syncPendingSales } from "@/lib/offline/sync";
+import { Modal } from "@/components/ui/Modal";
+import { CustomerForm, type CustomerFormValues } from "@/components/clients/CustomerForm";
 
 type Product = { id: string; name: string; barcode: string | null; sku: string | null; sellPrice: number; quantity: number; unit: string };
 type CartItem = { productId: string; name: string; unitPrice: number; quantity: number; maxQuantity: number };
 type PaymentMethod = "MAGASIN" | "MOBILE_MONEY" | "CARTE" | "VIREMENT";
+type Customer = { id: string; name: string; phone: string | null; creditLimit: number | null; balance: number };
 
 export default function VentesPage() {
   const { activeStore } = useSession();
@@ -27,13 +30,49 @@ export default function VentesPage() {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerId, setCustomerId] = useState("");
+  const [onCredit, setOnCredit] = useState(false);
+  const [amountPaid, setAmountPaid] = useState("0");
+  const [newCustomerOpen, setNewCustomerOpen] = useState(false);
+  const [newCustomerError, setNewCustomerError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    apiGet<Product[]>(withStore("/api/products", activeStore.storeId)).then(setProducts);
-    apiGet<{ taxRate: number }>(`/api/stores/${activeStore.storeId}`).then((s) => setTaxRate(s.taxRate));
+  const loadCustomers = useCallback(() => {
+    apiGet<Customer[]>(withStore("/api/customers", activeStore.storeId))
+      .then(setCustomers)
+      .catch(() => setCustomers([]));
   }, [activeStore.storeId]);
 
+  const load = useCallback(() => {
+    loadCustomers();
+    apiGet<Product[]>(withStore("/api/products", activeStore.storeId)).then(setProducts);
+    apiGet<{ taxRate: number }>(`/api/stores/${activeStore.storeId}`).then((s) => setTaxRate(s.taxRate));
+  }, [activeStore.storeId, loadCustomers]);
+
   useEffect(load, [load]);
+
+  const customer = customers.find((c) => c.id === customerId) ?? null;
+
+  async function createCustomer(values: CustomerFormValues) {
+    setNewCustomerError(null);
+    try {
+      const created = await apiPost<Customer>("/api/customers", { ...values, storeId: activeStore.storeId });
+      setCustomers((list) => [...list, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setCustomerId(created.id);
+      setNewCustomerOpen(false);
+    } catch (e) {
+      setNewCustomerError(e instanceof Error ? e.message : "Erreur");
+    }
+  }
+
+  function resetClient() {
+    setClientName("");
+    setClientPhone("");
+    setClientEmail("");
+    setCustomerId("");
+    setOnCredit(false);
+    setAmountPaid("0");
+  }
 
   const filtered = useMemo(() => {
     if (!query) return products.slice(0, 12);
@@ -73,6 +112,8 @@ export default function VentesPage() {
   const subtotal = cart.reduce((sum, c) => sum + c.unitPrice * c.quantity, 0);
   const taxAmount = Math.round(((subtotal * taxRate) / 100) * 100) / 100;
   const total = subtotal + taxAmount;
+  const paidNow = onCredit ? Math.min(Math.max(Number(amountPaid) || 0, 0), total) : total;
+  const balanceDue = Math.round((total - paidNow) * 100) / 100;
 
   /** Interroge le statut d'une transaction mobile money (paiement asynchrone type STK Push M-Pesa). */
   async function pollMobileMoneyStatus(transactionId: string): Promise<"REUSSI" | "ECHEC"> {
@@ -95,16 +136,25 @@ export default function VentesPage() {
     setLastSaleId(null);
     setProcessing(true);
 
+    if (onCredit && !customer) {
+      setMessage({ type: "error", text: "Sélectionnez un client pour une vente à crédit" });
+      setProcessing(false);
+      return;
+    }
+
     const saleBody = {
       storeId: activeStore.storeId,
       clientName: clientName || undefined,
       clientPhone: clientPhone || undefined,
       paymentMethod,
       items: cart.map((c) => ({ productId: c.productId, quantity: c.quantity, unitPrice: c.unitPrice })),
+      customerId: customer?.id,
+      amountPaid: onCredit ? paidNow : undefined,
     };
 
     try {
-      if (paymentMethod === "MOBILE_MONEY") {
+      // Vente à crédit : seul l'acompte éventuel est encaissé par mobile money.
+      if (paymentMethod === "MOBILE_MONEY" && paidNow > 0) {
         if (!clientPhone) {
           setMessage({ type: "error", text: "Numéro de téléphone requis pour le paiement mobile money" });
           setProcessing(false);
@@ -124,7 +174,7 @@ export default function VentesPage() {
             storeId: activeStore.storeId,
             provider: mmProvider,
             phone: clientPhone,
-            amount: total,
+            amount: paidNow,
             clientFirstName,
             clientLastName,
             clientEmail: clientEmail || undefined,
@@ -152,13 +202,17 @@ export default function VentesPage() {
       }
 
       const created = await apiPost<{ id: string }>("/api/sales", saleBody);
-      setMessage({ type: "success", text: "Vente enregistrée avec succès." });
+      setMessage({
+        type: "success",
+        text:
+          balanceDue > 0
+            ? `Vente à crédit enregistrée : ${balanceDue.toLocaleString("fr-FR")} restent dus par ${customer?.name}.`
+            : "Vente enregistrée avec succès.",
+      });
       setLastSaleId(created.id);
       window.open(`/ventes/${created.id}?print=1`, "_blank");
       setCart([]);
-      setClientName("");
-      setClientPhone("");
-      setClientEmail("");
+      resetClient();
       load();
     } catch (err) {
       if (err instanceof ApiClientError) {
@@ -173,13 +227,13 @@ export default function VentesPage() {
           paymentMethod,
           items: saleBody.items,
           createdAt: new Date().toISOString(),
+          customerId: saleBody.customerId,
+          amountPaid: saleBody.amountPaid,
           synced: false,
         });
         setMessage({ type: "info", text: "Hors-ligne : vente enregistrée sur l'appareil, elle sera synchronisée automatiquement dès le retour du réseau." });
         setCart([]);
-        setClientName("");
-        setClientPhone("");
-        setClientEmail("");
+        resetClient();
         syncPendingSales();
       }
     } finally {
@@ -259,7 +313,66 @@ export default function VentesPage() {
         </div>
 
         <div className="space-y-2">
-          <input className="input" placeholder="Nom du client (optionnel)" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+          <div className="flex gap-2">
+            <select
+              className="input"
+              aria-label="Client enregistré"
+              value={customerId}
+              onChange={(e) => {
+                setCustomerId(e.target.value);
+                if (!e.target.value) setOnCredit(false);
+              }}
+            >
+              <option value="">Client de passage</option>
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.balance > 0 ? ` (doit ${c.balance.toLocaleString("fr-FR")})` : ""}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={() => setNewCustomerOpen(true)} className="btn-secondary shrink-0 px-3" title="Nouveau client">
+              +
+            </button>
+          </div>
+          {!customer && (
+            <input className="input" placeholder="Nom du client (optionnel)" value={clientName} onChange={(e) => setClientName(e.target.value)} />
+          )}
+          {customer && (
+            <div className="space-y-2 rounded-lg bg-black/[0.03] p-2 text-sm dark:bg-white/[0.05]">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={onCredit} onChange={(e) => setOnCredit(e.target.checked)} />
+                Vente à crédit (paiement partiel ou différé)
+              </label>
+              {onCredit && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="amount-paid" className="shrink-0 text-neutral-500">
+                      Payé maintenant
+                    </label>
+                    <input
+                      id="amount-paid"
+                      type="number"
+                      min={0}
+                      max={total}
+                      step="any"
+                      className="input px-2 py-1"
+                      value={amountPaid}
+                      onChange={(e) => setAmountPaid(e.target.value)}
+                    />
+                  </div>
+                  <p className="flex justify-between font-medium text-amber-700 dark:text-amber-400">
+                    <span>Reste dû sur cette vente</span>
+                    <span>{balanceDue.toLocaleString("fr-FR")}</span>
+                  </p>
+                </>
+              )}
+              <p className="text-xs text-neutral-500">
+                Dette actuelle : {customer.balance.toLocaleString("fr-FR")}
+                {customer.creditLimit !== null && ` · plafond ${customer.creditLimit.toLocaleString("fr-FR")}`}
+              </p>
+            </div>
+          )}
           <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
             <option value="MAGASIN">Espèces (au comptoir)</option>
             <option value="MOBILE_MONEY">Mobile Money</option>
@@ -321,8 +434,12 @@ export default function VentesPage() {
         )}
 
         <button onClick={checkout} disabled={cart.length === 0 || processing} className="btn-primary w-full">
-          {processing ? "Traitement…" : "Encaisser"}
+          {processing ? "Traitement…" : onCredit ? "Enregistrer la vente à crédit" : "Encaisser"}
         </button>
+
+        <Modal open={newCustomerOpen} onClose={() => setNewCustomerOpen(false)} title="Nouveau client">
+          <CustomerForm onSubmit={createCustomer} error={newCustomerError} submitLabel="Créer et sélectionner" />
+        </Modal>
       </div>
     </div>
   );

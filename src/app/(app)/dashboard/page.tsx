@@ -6,7 +6,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, withStore } from "@/lib/api-client";
 import { NAV_ITEMS } from "@/lib/nav-items";
-import { IconAlert, IconSale, IconStock, IconExpense, IconFinance } from "@/components/layout/icons";
+import { IconAlert, IconSale, IconStock, IconExpense, IconFinance, IconCustomers } from "@/components/layout/icons";
 
 type DashboardData = {
   revenueToday: number;
@@ -18,6 +18,7 @@ type DashboardData = {
   expenses30d: number;
   revenueTrend: { date: string; total: number }[];
   productsCount: number;
+  receivables: number;
 };
 
 type Sale = {
@@ -33,6 +34,7 @@ type Role = "ADMIN" | "GESTIONNAIRE" | "VENDEUR";
 
 const QUICK_ACTIONS: { href: string; label: string; icon: typeof IconSale; roles: Role[] }[] = [
   { href: "/ventes", label: "Nouvelle vente", icon: IconSale, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
+  { href: "/clients", label: "Encaisser une dette", icon: IconCustomers, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
   { href: "/stock/nouveau", label: "Nouveau produit", icon: IconStock, roles: ["ADMIN", "GESTIONNAIRE"] },
   { href: "/finances/depenses", label: "Nouvelle dépense", icon: IconExpense, roles: ["ADMIN", "GESTIONNAIRE"] },
   { href: "/finances", label: "Voir les rapports", icon: IconFinance, roles: ["ADMIN", "GESTIONNAIRE"] },
@@ -145,7 +147,7 @@ export default function DashboardPage() {
           </div>
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
             <div className="card">
               <p className="text-xs font-medium text-neutral-500">Ventes aujourd&apos;hui</p>
               <p className="mt-2 font-display text-2xl font-extrabold tracking-tight">{data.revenueToday.toLocaleString("fr-FR")}</p>
@@ -179,6 +181,13 @@ export default function DashboardPage() {
               <p className="mt-2 font-display text-2xl font-extrabold tracking-tight">{data.productsCount}</p>
               <p className="mt-1 text-xs text-neutral-500">références actives</p>
             </div>
+            <Link href="/clients?debt=1" className="card hover:border-emerald-500">
+              <p className="text-xs font-medium text-neutral-500">Crédits clients</p>
+              <p className={`mt-2 font-display text-2xl font-extrabold tracking-tight ${data.receivables > 0 ? "text-amber-600" : ""}`}>
+                {data.receivables.toLocaleString("fr-FR")}
+              </p>
+              <p className="mt-1 text-xs text-neutral-500">reste à encaisser</p>
+            </Link>
           </div>
 
           {/* Chart */}

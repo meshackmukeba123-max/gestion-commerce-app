@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeTax, round2, summarizeTaxPeriod } from "./tax";
+import { computeTax, round2, summarizeTaxPeriod, returnTaxAmount } from "./tax";
 
 describe("computeTax", () => {
   it("calcule la taxe et le total TTC pour un taux standard", () => {
@@ -49,5 +49,30 @@ describe("summarizeTaxPeriod", () => {
     expect(summary.taxeCollectee).toBe(0);
     expect(summary.chiffreAffairesTTC).toBe(0);
     expect(summary.nombreVentes).toBe(0);
+  });
+});
+
+describe("summarizeTaxPeriod avec retours", () => {
+  it("déduit les retours du chiffre d'affaires et de la taxe", () => {
+    const summary = summarizeTaxPeriod(
+      [{ subtotal: 2000, taxAmount: 320, total: 2320 }],
+      [{ subtotal: 500, taxAmount: 80, total: 580 }]
+    );
+    expect(summary.chiffreAffairesHT).toBe(1500);
+    expect(summary.taxeCollectee).toBe(240);
+    expect(summary.chiffreAffairesTTC).toBe(1740);
+    expect(summary.nombreVentes).toBe(1);
+    expect(summary.nombreRetours).toBe(1);
+    expect(summary.montantRetoursTTC).toBe(580);
+  });
+});
+
+describe("returnTaxAmount", () => {
+  it("applique le taux effectif de la vente d'origine", () => {
+    expect(returnTaxAmount(500, { subtotal: 2000, taxAmount: 320 })).toBe(80);
+  });
+
+  it("vaut 0 si la vente n'avait pas de sous-total", () => {
+    expect(returnTaxAmount(0, { subtotal: 0, taxAmount: 0 })).toBe(0);
   });
 });

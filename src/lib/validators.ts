@@ -38,10 +38,40 @@ export const saleSchema = z.object({
   items: z.array(saleItemSchema).min(1, "Ajoutez au moins un article"),
   offlineId: z.string().optional(),
   createdAt: z.string().optional(),
+  // Vente à crédit : client enregistré + montant payé maintenant (acompte, peut être 0).
+  customerId: z.string().optional(),
+  amountPaid: z.coerce.number().min(0, "Montant payé invalide").optional(),
 });
 
 export const cancelSaleSchema = z.object({
   reason: z.string().trim().min(3, "Indiquez le motif de l'annulation"),
+});
+
+export const saleReturnSchema = z.object({
+  reason: z.string().trim().min(3, "Indiquez le motif du retour"),
+  items: z
+    .array(z.object({ saleItemId: z.string().min(1), quantity: z.coerce.number().positive("Quantité invalide") }))
+    .min(1, "Sélectionnez au moins un article à retourner"),
+});
+
+export const customerSchema = z.object({
+  name: z.string().trim().min(1, "Nom requis"),
+  phone: z.string().trim().optional(),
+  address: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
+  creditLimit: z.coerce.number().min(0, "Plafond invalide").optional().nullable(),
+});
+
+export const customerPaymentSchema = z.object({
+  amount: z.coerce.number().positive("Le montant doit être positif"),
+  method: z.enum(["MAGASIN", "MOBILE_MONEY", "CARTE", "VIREMENT"]).default("MAGASIN"),
+  note: z.string().trim().optional(),
+});
+
+export const inventoryCountsSchema = z.object({
+  items: z
+    .array(z.object({ productId: z.string().min(1), countedQty: z.coerce.number().min(0, "Quantité comptée invalide").nullable() }))
+    .min(1),
 });
 
 export const expenseSchema = z.object({

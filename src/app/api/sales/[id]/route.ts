@@ -16,6 +16,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         items: { include: { product: true } },
         user: { select: { name: true } },
         cancelledBy: { select: { name: true } },
+        customer: { select: { id: true, name: true } },
+        returns: {
+          orderBy: { createdAt: "asc" },
+          include: { user: { select: { name: true } }, items: { include: { product: { select: { name: true } } } } },
+        },
         store: true,
       },
     });
@@ -58,6 +63,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         taxAmount: sale.taxAmount,
         total: sale.total,
         cancelled: sale.cancelledAt ? { at: sale.cancelledAt, reason: sale.cancelReason } : null,
+        balanceDue: sale.balanceDue,
+        returnedTotal: sale.returns.reduce((sum, r) => sum + r.total, 0),
       });
       return new NextResponse(pdf, {
         headers: {

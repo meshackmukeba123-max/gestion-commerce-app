@@ -30,6 +30,17 @@ mobile money.
 - **Annulation de ventes** (Gestionnaire/Administrateur) : avec motif obligatoire, les articles
   sont remis en stock, la vente sort du chiffre d'affaires et la facture reste consultable avec
   la mention « annulée » (numérotation sans trou, traçabilité complète).
+- **Retours partiels** (Gestionnaire/Administrateur) : le client rend une partie des articles ;
+  ils reviennent en stock, le montant (taxe comprise, au prorata) est déduit du chiffre
+  d'affaires, et sur une vente à crédit il réduit d'abord la dette avant tout remboursement.
+- **Clients & ventes à crédit** : fiche client (téléphone, plafond de crédit), vente avec
+  acompte ou paiement différé depuis la caisse, suivi du « reste dû » par facture, encaissement
+  des remboursements (répartis automatiquement sur les dettes les plus anciennes). Le total des
+  créances apparaît sur le tableau de bord et dans les rapports.
+- **Inventaire physique** (Gestionnaire/Administrateur) : comptage produit par produit (saisie
+  ou scan), écarts valorisés au prix d'achat, puis validation qui ajuste le stock et trace chaque
+  ajustement dans les mouvements. Les ventes faites pendant l'inventaire ne créent pas de faux
+  écart (le stock théorique est relu au moment de chaque comptage).
 - **Tableau de bord financier** : chiffre d'affaires, dépenses, bénéfice net, graphique
   d'évolution, rapports mensuels/annuels exportables en **PDF** et **Excel**.
 - **Multi-boutiques** : un même compte peut gérer plusieurs points de vente, chacun avec son
@@ -175,7 +186,9 @@ npm test
 | Fonctionnalité | Vendeur | Gestionnaire | Administrateur |
 |---|:---:|:---:|:---:|
 | Effectuer une vente | ✅ | ✅ | ✅ |
-| Annuler une vente (remise en stock) | ❌ | ✅ | ✅ |
+| Annuler une vente / enregistrer un retour | ❌ | ✅ | ✅ |
+| Clients, ventes à crédit, encaisser une dette | ✅ | ✅ | ✅ |
+| Inventaire physique | ❌ | ✅ | ✅ |
 | Consulter le stock | ✅ | ✅ | ✅ |
 | Modifier le stock / produits | ❌ | ✅ | ✅ |
 | Finances, dépenses, rapports | ❌ | ✅ | ✅ |
@@ -435,5 +448,8 @@ les performances ou le build). Pour l'activer :
   "aucune restriction" — voir la section CinetPay ci-dessus pour le contournement en local, et
   anticiper une solution d'IP fixe (ou contacter leur support) avant la mise en production sur
   Vercel (IP sortantes non fixes par défaut).
-- Le mode hors-ligne couvre les ventes ; les autres actions (gestion de stock, fournisseurs…)
-  nécessitent une connexion.
+- Le mode hors-ligne couvre les ventes (y compris à crédit, si le client a été chargé avant la
+  coupure) ; les autres actions (clients, retours, inventaire, stock, fournisseurs…) nécessitent
+  une connexion.
+- Les remboursements (annulation, retour) ne sont pas renvoyés automatiquement vers le mobile
+  money ou la carte : l'application indique le montant à rendre, le remboursement se fait à la main.

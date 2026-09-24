@@ -14,6 +14,8 @@ export type OfflineSale = {
   paymentMethod: "MAGASIN" | "MOBILE_MONEY" | "CARTE" | "VIREMENT";
   items: { productId: string; quantity: number; unitPrice: number }[];
   createdAt: string;
+  customerId?: string;
+  amountPaid?: number;
   synced: boolean;
 };
 

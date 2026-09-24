@@ -22,6 +22,8 @@ export type InvoiceData = {
   taxAmount: number;
   total: number;
   cancelled?: { at: Date; reason: string | null } | null;
+  balanceDue?: number;
+  returnedTotal?: number;
 };
 
 export function buildInvoicePdf(data: InvoiceData) {
@@ -121,6 +123,20 @@ export function buildInvoicePdf(data: InvoiceData) {
   doc.text(`${fmt(data.total)} ${currency}`, totalsX, y, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
+  if (data.returnedTotal && data.returnedTotal > 0) {
+    y += 16;
+    doc.text(`Articles retournés`, 430, y);
+    doc.text(`-${fmt(data.returnedTotal)} ${currency}`, totalsX, y, { align: "right" });
+  }
+  if (data.balanceDue && data.balanceDue > 0 && !data.cancelled) {
+    y += 16;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(200, 30, 30);
+    doc.text(`Reste à payer`, 430, y);
+    doc.text(`${fmt(data.balanceDue)} ${currency}`, totalsX, y, { align: "right" });
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "normal");
+  }
 
   y += 40;
   doc.setDrawColor(220);

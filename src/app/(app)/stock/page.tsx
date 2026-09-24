@@ -54,7 +54,12 @@ export default function StockPage() {
           <input type="checkbox" checked={lowStockOnly} onChange={(e) => setLowStockOnly(e.target.checked)} />
           Stock bas uniquement
         </label>
-        <Link href="/stock/mouvements" className="btn-secondary ml-auto">
+        {activeStore.role !== "VENDEUR" && (
+          <Link href="/stock/inventaires" className="btn-secondary ml-auto">
+            Inventaire physique
+          </Link>
+        )}
+        <Link href="/stock/mouvements" className={activeStore.role === "VENDEUR" ? "btn-secondary ml-auto" : "btn-secondary"}>
           Mouvements de stock
         </Link>
       </div>
