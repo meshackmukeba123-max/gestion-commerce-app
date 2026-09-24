@@ -6,8 +6,14 @@ const db = new PrismaClient();
 async function main() {
   console.log("Suppression des données existantes…");
   await db.mobileMoneyTransaction.deleteMany();
+  await db.inventoryCountItem.deleteMany();
+  await db.inventoryCount.deleteMany();
+  await db.saleReturnItem.deleteMany();
+  await db.saleReturn.deleteMany();
+  await db.customerPayment.deleteMany();
   await db.saleItem.deleteMany();
   await db.sale.deleteMany();
+  await db.customer.deleteMany();
   await db.stockMovement.deleteMany();
   await db.purchaseOrderItem.deleteMany();
   await db.purchaseOrder.deleteMany();
@@ -224,6 +230,33 @@ async function main() {
     data: { storeId: quincaillerie.id, productId: produitsQuincaillerie[0].id, type: "SORTIE", quantity: 2, reason: `Vente ${sale.id}`, userId: vendeur.id },
   });
   await db.product.update({ where: { id: produitsQuincaillerie[0].id }, data: { quantity: { decrement: 2 } } });
+
+  console.log("Création de clients et d'une vente à crédit…");
+  const clientCredit = await db.customer.create({
+    data: { storeId: quincaillerie.id, name: "Entreprise Kasongo BTP", phone: "+243 990 111 222", creditLimit: 500000 },
+  });
+  await db.customer.create({ data: { storeId: quincaillerie.id, name: "Marie Tshibanda", phone: "+243 810 333 444" } });
+  const creditSale = await db.sale.create({
+    data: {
+      storeId: quincaillerie.id,
+      userId: gestionnaire.id,
+      customerId: clientCredit.id,
+      clientName: clientCredit.name,
+      clientPhone: clientCredit.phone,
+      paymentMethod: "MAGASIN",
+      subtotal: 75000,
+      taxAmount: 12000,
+      total: 87000,
+      balanceDue: 57000, // acompte de 30 000 versé
+      items: {
+        create: [{ productId: produitsQuincaillerie[0].id, quantity: 5, unitPrice: 15000, total: 75000 }],
+      },
+    },
+  });
+  await db.stockMovement.create({
+    data: { storeId: quincaillerie.id, productId: produitsQuincaillerie[0].id, type: "SORTIE", quantity: 5, reason: `Vente ${creditSale.id}`, userId: gestionnaire.id },
+  });
+  await db.product.update({ where: { id: produitsQuincaillerie[0].id }, data: { quantity: { decrement: 5 } } });
 
   await db.expense.createMany({
     data: [

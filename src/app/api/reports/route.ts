@@ -42,6 +42,8 @@ export async function GET(req: Request) {
           { label: "Taxe collectée", value: `${report.tax.taxeCollectee} ${report.store.currency}` },
           { label: "Dépenses", value: `${report.totalExpenses} ${report.store.currency}` },
           { label: "Bénéfice net", value: `${report.beneficeNet} ${report.store.currency}` },
+          { label: "Retours clients (TTC)", value: `${report.tax.montantRetoursTTC} ${report.store.currency}` },
+          { label: "Créances clients (à ce jour)", value: `${report.creancesClients} ${report.store.currency}` },
         ],
         tables: [
           {
@@ -55,6 +57,20 @@ export async function GET(req: Request) {
                 s.subtotal.toFixed(2),
                 s.taxAmount.toFixed(2),
                 s.total.toFixed(2),
+              ]),
+            },
+          },
+          {
+            title: "Retours clients",
+            table: {
+              head: ["Date", "Facture", "Motif", "Sous-total", "Taxe", "Total"],
+              body: report.returns.map((r) => [
+                r.createdAt.toLocaleDateString("fr-FR"),
+                r.sale.invoiceNumber ?? "-",
+                r.reason,
+                r.subtotal.toFixed(2),
+                r.taxAmount.toFixed(2),
+                r.total.toFixed(2),
               ]),
             },
           },
@@ -91,14 +107,25 @@ export async function GET(req: Request) {
           { header: "Taxe", key: "tax", width: 12 },
           { header: "Total", key: "total", width: 14 },
         ],
-        report.sales.map((s) => ({
-          date: s.createdAt.toLocaleDateString("fr-FR"),
-          client: s.clientName ?? "-",
-          paiement: s.paymentMethod,
-          subtotal: s.subtotal,
-          tax: s.taxAmount,
-          total: s.total,
-        }))
+        [
+          ...report.sales.map((s) => ({
+            date: s.createdAt.toLocaleDateString("fr-FR"),
+            client: s.clientName ?? "-",
+            paiement: s.paymentMethod,
+            subtotal: s.subtotal,
+            tax: s.taxAmount,
+            total: s.total,
+          })),
+          // Retours en négatif : la somme de la colonne Total égale le chiffre d'affaires net.
+          ...report.returns.map((r) => ({
+            date: r.createdAt.toLocaleDateString("fr-FR"),
+            client: `Retour ${r.sale.invoiceNumber ?? ""} (${r.sale.clientName ?? "-"})`,
+            paiement: "RETOUR",
+            subtotal: -r.subtotal,
+            tax: -r.taxAmount,
+            total: -r.total,
+          })),
+        ]
       );
       return new NextResponse(buffer, {
         headers: {

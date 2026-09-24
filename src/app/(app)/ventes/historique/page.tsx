@@ -14,6 +14,9 @@ type Sale = {
   taxAmount: number;
   total: number;
   createdAt: string;
+  cancelledAt: string | null;
+  balanceDue: number;
+  returns: { total: number }[];
   user: { name: string } | null;
   items: { quantity: number; unitPrice: number; total: number; product: { name: string } }[];
 };
@@ -29,14 +32,19 @@ export default function SalesHistoryPage() {
 
   useEffect(load, [load]);
 
-  const totalPeriode = sales.reduce((sum, s) => sum + s.total, 0);
+  const validSales = sales.filter((s) => !s.cancelledAt);
+  const cancelledCount = sales.length - validSales.length;
+  const returnedOf = (s: Sale) => s.returns.reduce((sum, r) => sum + r.total, 0);
+  // Total net : retours clients déduits, comme dans les rapports financiers.
+  const totalPeriode = validSales.reduce((sum, s) => sum + s.total - returnedOf(s), 0);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Historique des ventes</h1>
         <p className="text-sm text-neutral-500">
-          {sales.length} vente(s) · Total {totalPeriode.toLocaleString("fr-FR")}
+          {validSales.length} vente(s)
+          {cancelledCount > 0 && ` · ${cancelledCount} annulée(s)`} · Total net {totalPeriode.toLocaleString("fr-FR")}
         </p>
       </div>
 
@@ -55,7 +63,9 @@ export default function SalesHistoryPage() {
           <tbody>
             {sales.map((s) => (
               <Fragment key={s.id}>
-                <tr className="cursor-pointer" onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
+                <tr
+                  className={s.cancelledAt ? "cursor-pointer text-neutral-400" : "cursor-pointer"}
+                  onClick={() => setExpanded(expanded === s.id ? null : s.id)}>
                   <td>{new Date(s.createdAt).toLocaleString("fr-FR")}</td>
                   <td>
                     {s.invoiceNumber ? (
@@ -73,7 +83,24 @@ export default function SalesHistoryPage() {
                   <td>{s.clientName || "-"}</td>
                   <td>{s.paymentMethod}</td>
                   <td>{s.user?.name || "-"}</td>
-                  <td className="text-right font-medium">{s.total.toLocaleString("fr-FR")}</td>
+                  <td className="text-right font-medium">
+                    {s.cancelledAt && (
+                      <span className="mr-2 inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
+                        Annulée
+                      </span>
+                    )}
+                    {!s.cancelledAt && returnedOf(s) > 0 && (
+                      <span className="mr-2 inline-block rounded bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                        Retour -{returnedOf(s).toLocaleString("fr-FR")}
+                      </span>
+                    )}
+                    {!s.cancelledAt && s.balanceDue > 0 && (
+                      <span className="mr-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                        Crédit · {s.balanceDue.toLocaleString("fr-FR")} dû
+                      </span>
+                    )}
+                    {s.total.toLocaleString("fr-FR")}
+                  </td>
                 </tr>
                 {expanded === s.id && (
                   <tr>

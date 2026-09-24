@@ -16,13 +16,21 @@ export async function GET(req: Request) {
     const start14 = new Date(startOfToday);
     start14.setDate(start14.getDate() - 13);
 
-    const [products, salesToday, sales14d, expenses30d] = await Promise.all([
+    const [products, salesToday, sales14d, expenses30d, returns14d, receivables] = await Promise.all([
       db.product.findMany({ where: { storeId, active: true } }),
-      db.sale.findMany({ where: { storeId, createdAt: { gte: startOfToday } } }),
-      db.sale.findMany({ where: { storeId, createdAt: { gte: start14 } }, select: { total: true, createdAt: true } }),
+      db.sale.findMany({ where: { storeId, cancelledAt: null, createdAt: { gte: startOfToday } } }),
+      db.sale.findMany({ where: { storeId, cancelledAt: null, createdAt: { gte: start14 } }, select: { total: true, createdAt: true } }),
       db.expense.aggregate({
         where: { storeId, date: { gte: new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()) } },
         _sum: { amount: true },
+      }),
+      db.saleReturn.findMany({
+        where: { storeId, createdAt: { gte: start14 }, sale: { cancelledAt: null } },
+        select: { total: true, createdAt: true },
+      }),
+      db.sale.aggregate({
+        where: { storeId, cancelledAt: null, balanceDue: { gt: 0 } },
+        _sum: { balanceDue: true },
       }),
     ]);
 
@@ -42,9 +50,14 @@ export async function GET(req: Request) {
       const key = s.createdAt.toISOString().slice(0, 10);
       byDay.set(key, round2((byDay.get(key) ?? 0) + s.total));
     }
+    for (const r of returns14d) {
+      const key = r.createdAt.toISOString().slice(0, 10);
+      if (byDay.has(key)) byDay.set(key, round2((byDay.get(key) ?? 0) - r.total));
+    }
+    const returnsToday = returns14d.filter((r) => r.createdAt >= startOfToday).reduce((sum, r) => sum + r.total, 0);
 
     return NextResponse.json({
-      revenueToday: round2(salesToday.reduce((sum, s) => sum + s.total, 0)),
+      revenueToday: round2(salesToday.reduce((sum, s) => sum + s.total, 0) - returnsToday),
       salesCountToday: salesToday.length,
       lowStockCount: lowStock.length,
       lowStockProducts: lowStock.slice(0, 8).map((p) => ({ id: p.id, name: p.name, quantity: p.quantity, alertThreshold: p.alertThreshold })),
@@ -53,6 +66,7 @@ export async function GET(req: Request) {
       expenses30d: round2(expenses30d._sum.amount ?? 0),
       revenueTrend: Array.from(byDay.entries()).map(([date, total]) => ({ date, total })),
       productsCount: products.length,
+      receivables: round2(receivables._sum.balanceDue ?? 0),
     });
   } catch (err) {
     return handleApiError(err);

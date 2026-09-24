@@ -4,12 +4,21 @@ import { useEffect, useState, useCallback } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, withStore } from "@/lib/api-client";
+import Link from "next/link";
 import { KpiCard } from "@/components/ui/KpiCard";
 
 type Report = {
   label: string;
   store: { currency: string };
-  tax: { chiffreAffairesHT: number; taxeCollectee: number; chiffreAffairesTTC: number; nombreVentes: number };
+  tax: {
+    chiffreAffairesHT: number;
+    taxeCollectee: number;
+    chiffreAffairesTTC: number;
+    nombreVentes: number;
+    nombreRetours: number;
+    montantRetoursTTC: number;
+  };
+  creancesClients: number;
   totalExpenses: number;
   coutMarchandisesVendues: number;
   beneficeBrut: number;
@@ -75,11 +84,29 @@ export default function FinancesPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Chiffre d'affaires HT" value={report.tax.chiffreAffairesHT.toLocaleString("fr-FR")} hint={`${report.tax.nombreVentes} vente(s)`} />
+        <KpiCard
+          label="Chiffre d'affaires HT"
+          value={report.tax.chiffreAffairesHT.toLocaleString("fr-FR")}
+          hint={`${report.tax.nombreVentes} vente(s)${
+            report.tax.nombreRetours > 0 ? ` · ${report.tax.nombreRetours} retour(s) déduit(s) : ${report.tax.montantRetoursTTC.toLocaleString("fr-FR")} TTC` : ""
+          }`}
+        />
         <KpiCard label="Taxe collectée" value={report.tax.taxeCollectee.toLocaleString("fr-FR")} />
         <KpiCard label="Dépenses" value={report.totalExpenses.toLocaleString("fr-FR")} tone="warning" />
         <KpiCard label="Bénéfice net" value={report.beneficeNet.toLocaleString("fr-FR")} tone={report.beneficeNet >= 0 ? "success" : "danger"} />
       </div>
+
+      {report.creancesClients > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-300">
+          <span>
+            <b className="font-semibold">Créances clients :</b> {report.creancesClients.toLocaleString("fr-FR")} {report.store.currency} de ventes à
+            crédit restent à encaisser (compris dans le chiffre d&apos;affaires).
+          </span>
+          <Link href="/clients?debt=1" className="shrink-0 font-semibold underline underline-offset-2">
+            Voir les clients
+          </Link>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="card">

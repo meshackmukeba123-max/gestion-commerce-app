@@ -11,10 +11,29 @@ export function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
 
-/** Résumé fiscal simplifié sur une période, à partir d'une liste de ventes. */
-export function summarizeTaxPeriod(sales: { subtotal: number; taxAmount: number; total: number }[]) {
-  const chiffreAffairesHT = round2(sales.reduce((sum, s) => sum + s.subtotal, 0));
-  const taxeCollectee = round2(sales.reduce((sum, s) => sum + s.taxAmount, 0));
-  const chiffreAffairesTTC = round2(sales.reduce((sum, s) => sum + s.total, 0));
-  return { chiffreAffairesHT, taxeCollectee, chiffreAffairesTTC, nombreVentes: sales.length };
+type Amounts = { subtotal: number; taxAmount: number; total: number };
+
+/**
+ * Résumé fiscal simplifié sur une période : ventes moins retours clients de la période
+ * (un retour réduit le chiffre d'affaires et la taxe collectée).
+ */
+export function summarizeTaxPeriod(sales: Amounts[], returns: Amounts[] = []) {
+  const sum = (list: Amounts[], key: keyof Amounts) => list.reduce((acc, x) => acc + x[key], 0);
+  const chiffreAffairesHT = round2(sum(sales, "subtotal") - sum(returns, "subtotal"));
+  const taxeCollectee = round2(sum(sales, "taxAmount") - sum(returns, "taxAmount"));
+  const chiffreAffairesTTC = round2(sum(sales, "total") - sum(returns, "total"));
+  return {
+    chiffreAffairesHT,
+    taxeCollectee,
+    chiffreAffairesTTC,
+    nombreVentes: sales.length,
+    nombreRetours: returns.length,
+    montantRetoursTTC: round2(sum(returns, "total")),
+  };
+}
+
+/** Part de taxe d'un retour, proportionnelle à la taxe réellement facturée sur la vente d'origine. */
+export function returnTaxAmount(returnSubtotal: number, sale: { subtotal: number; taxAmount: number }) {
+  if (sale.subtotal <= 0) return 0;
+  return round2((returnSubtotal * sale.taxAmount) / sale.subtotal);
 }

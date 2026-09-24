@@ -12,6 +12,8 @@ import {
   IconUsers,
   IconSettings,
   IconHelp,
+  IconCustomers,
+  IconInventory,
 } from "@/components/layout/icons";
 
 export type NavItem = {
@@ -27,6 +29,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/ventes/historique", label: "Historique", icon: IconHistory, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
   { href: "/stock", label: "Stock", icon: IconStock, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
   { href: "/stock/mouvements", label: "Mouvements", icon: IconMovements, roles: ["ADMIN", "GESTIONNAIRE"] },
+  { href: "/stock/inventaires", label: "Inventaires", icon: IconInventory, roles: ["ADMIN", "GESTIONNAIRE"] },
+  { href: "/clients", label: "Clients", icon: IconCustomers, roles: ["ADMIN", "GESTIONNAIRE", "VENDEUR"] },
   { href: "/finances", label: "Finances", icon: IconFinance, roles: ["ADMIN", "GESTIONNAIRE"] },
   { href: "/finances/depenses", label: "Dépenses", icon: IconExpense, roles: ["ADMIN", "GESTIONNAIRE"] },
   { href: "/fournisseurs", label: "Fournisseurs", icon: IconSupplier, roles: ["ADMIN", "GESTIONNAIRE"] },

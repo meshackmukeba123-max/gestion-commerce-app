@@ -10,6 +10,10 @@ const PERMISSIONS: Record<Role, string[]> = {
     "stock:write",
     "ventes:read",
     "ventes:write",
+    "ventes:cancel",
+    "ventes:retour",
+    "clients:read",
+    "clients:write",
     "finances:read",
     "finances:write",
     "fournisseurs:read",
@@ -18,7 +22,7 @@ const PERMISSIONS: Record<Role, string[]> = {
     "commandes:write",
     "rapports:read",
   ],
-  VENDEUR: ["stock:read", "ventes:read", "ventes:write"],
+  VENDEUR: ["stock:read", "ventes:read", "ventes:write", "clients:read", "clients:write"],
 };
 
 export function can(session: SessionPayload | null, storeId: string, permission: string): boolean {

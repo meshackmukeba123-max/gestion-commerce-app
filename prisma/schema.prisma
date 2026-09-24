@@ -32,14 +32,18 @@ model Store {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  memberships    StoreMembership[]
-  products       Product[]
-  suppliers      Supplier[]
-  purchaseOrders PurchaseOrder[]
-  sales          Sale[]
-  expenses       Expense[]
-  stockMovements StockMovement[]
-  mobileMoneyTx  MobileMoneyTransaction[]
+  memberships      StoreMembership[]
+  products         Product[]
+  suppliers        Supplier[]
+  purchaseOrders   PurchaseOrder[]
+  sales            Sale[]
+  expenses         Expense[]
+  stockMovements   StockMovement[]
+  mobileMoneyTx    MobileMoneyTransaction[]
+  customers        Customer[]
+  customerPayments CustomerPayment[]
+  saleReturns      SaleReturn[]
+  inventories      InventoryCount[]
 }
 
 model User {
@@ -50,9 +54,14 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  memberships    StoreMembership[]
-  sales          Sale[]          @relation("SoldBy")
-  stockMovements StockMovement[] @relation("MovedBy")
+  memberships          StoreMembership[]
+  sales                Sale[]            @relation("SoldBy")
+  cancelledSales       Sale[]            @relation("CancelledBy")
+  customerPayments     CustomerPayment[] @relation("ReceivedBy")
+  saleReturns          SaleReturn[]      @relation("ReturnedBy")
+  inventoriesStarted   InventoryCount[]  @relation("InventoryStartedBy")
+  inventoriesValidated InventoryCount[]  @relation("InventoryValidatedBy")
+  stockMovements       StockMovement[]   @relation("MovedBy")
 }
 
 model StoreMembership {
@@ -96,6 +105,8 @@ model Product {
   stockMovements     StockMovement[]
   saleItems          SaleItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  saleReturnItems    SaleReturnItem[]
+  inventoryItems     InventoryCountItem[]
 
   @@index([storeId])
   @@index([barcode])
@@ -203,24 +214,153 @@ model Sale {
   offlineId     String?     @unique
   invoiceNumber String?     @unique
   createdAt     DateTime    @default(now())
+  // Annulation : la vente reste en base (traçabilité, numérotation des factures sans trou)
+  // mais est exclue du chiffre d'affaires, et son stock est réintégré.
+  cancelledAt   DateTime?
+  cancelledById String?
+  cancelReason  String?
+  // Vente à crédit : client (obligatoire pour un crédit) et montant restant dû.
+  // 0 pour une vente payée comptant (y compris toutes les ventes antérieures au crédit).
+  customerId    String?
+  balanceDue    Float       @default(0)
 
-  store Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  user  User?      @relation("SoldBy", fields: [userId], references: [id])
-  items SaleItem[]
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user        User?        @relation("SoldBy", fields: [userId], references: [id])
+  cancelledBy User?        @relation("CancelledBy", fields: [cancelledById], references: [id])
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  items       SaleItem[]
+  returns     SaleReturn[]
+
+  @@index([storeId, createdAt])
+  @@index([customerId])
+}
+
+model SaleItem {
+  id               String @id @default(cuid())
+  saleId           String
+  productId        String
+  quantity         Float
+  unitPrice        Float
+  total            Float
+  returnedQuantity Float  @default(0) // Quantité déjà rendue par le client (retours partiels)
+
+  sale        Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product          @relation(fields: [productId], references: [id])
+  returnItems SaleReturnItem[]
+}
+
+// Retour partiel ou total d'articles d'une vente : remise en stock + remboursement (ou
+// réduction de la dette si la vente était à crédit).
+model SaleReturn {
+  id            String   @id @default(cuid())
+  storeId       String
+  saleId        String
+  userId        String?
+  reason        String
+  subtotal      Float
+  taxAmount     Float
+  total         Float
+  creditApplied Float    @default(0) // Part déduite du reste dû ; total - creditApplied = remboursé au client
+  createdAt     DateTime @default(now())
+
+  store Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sale  Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  user  User?            @relation("ReturnedBy", fields: [userId], references: [id])
+  items SaleReturnItem[]
+
+  @@index([storeId, createdAt])
+  @@index([saleId])
+}
+
+model SaleReturnItem {
+  id           String @id @default(cuid())
+  saleReturnId String
+  saleItemId   String
+  productId    String
+  quantity     Float
+  unitPrice    Float
+  total        Float
+
+  saleReturn SaleReturn @relation(fields: [saleReturnId], references: [id], onDelete: Cascade)
+  saleItem   SaleItem   @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id])
+}
+
+// Client enregistré : permet les ventes à crédit et le suivi des dettes.
+model Customer {
+  id          String   @id @default(cuid())
+  storeId     String
+  name        String
+  phone       String?
+  address     String?
+  notes       String?
+  creditLimit Float? // Plafond de crédit (vide = pas de limite)
+  createdAt   DateTime @default(now())
+
+  store    Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sales    Sale[]
+  payments CustomerPayment[]
+
+  @@index([storeId])
+}
+
+// Remboursement d'une dette client, réparti automatiquement sur ses ventes les plus anciennes.
+model CustomerPayment {
+  id         String      @id @default(cuid())
+  storeId    String
+  customerId String
+  amount     Float
+  method     SaleChannel @default(MAGASIN)
+  note       String?
+  userId     String?
+  createdAt  DateTime    @default(now())
+
+  store    Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user     User?    @relation("ReceivedBy", fields: [userId], references: [id])
+
+  @@index([storeId, createdAt])
+  @@index([customerId])
+}
+
+enum InventoryStatus {
+  EN_COURS
+  VALIDE
+  ANNULE
+}
+
+// Inventaire physique : comptage réel des produits, puis ajustement du stock sur les écarts.
+model InventoryCount {
+  id            String          @id @default(cuid())
+  storeId       String
+  status        InventoryStatus @default(EN_COURS)
+  notes         String?
+  userId        String?
+  validatedById String?
+  createdAt     DateTime        @default(now())
+  validatedAt   DateTime?
+
+  store       Store                @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user        User?                @relation("InventoryStartedBy", fields: [userId], references: [id])
+  validatedBy User?                @relation("InventoryValidatedBy", fields: [validatedById], references: [id])
+  items       InventoryCountItem[]
 
   @@index([storeId, createdAt])
 }
 
-model SaleItem {
-  id        String @id @default(cuid())
-  saleId    String
-  productId String
-  quantity  Float
-  unitPrice Float
-  total     Float
+model InventoryCountItem {
+  id          String @id @default(cuid())
+  inventoryId String
+  productId   String
+  // Stock théorique au moment où le comptage est saisi (et non au début de l'inventaire) :
+  // les ventes faites entre le début de l'inventaire et le comptage ne créent pas de faux écart.
+  expectedQty Float
+  countedQty  Float?
 
-  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  inventory InventoryCount @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([inventoryId, productId])
 }
 
 enum ExpenseCategory {
@@ -262,17 +402,17 @@ enum MobileMoneyStatus {
 }
 
 model MobileMoneyTransaction {
-  id          String               @id @default(cuid())
+  id          String              @id @default(cuid())
   storeId     String
   saleId      String?
   provider    MobileMoneyProvider
   phone       String
   amount      Float
-  status      MobileMoneyStatus    @default(EN_ATTENTE)
+  status      MobileMoneyStatus   @default(EN_ATTENTE)
   externalRef String?
   // Lien de paiement à ouvrir/scanner (flux Orange Money Web Payment, redirection navigateur).
   paymentUrl  String?
-  createdAt   DateTime             @default(now())
+  createdAt   DateTime            @default(now())
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 

@@ -21,6 +21,9 @@ export type InvoiceData = {
   subtotal: number;
   taxAmount: number;
   total: number;
+  cancelled?: { at: Date; reason: string | null } | null;
+  balanceDue?: number;
+  returnedTotal?: number;
 };
 
 export function buildInvoicePdf(data: InvoiceData) {
@@ -62,6 +65,13 @@ export function buildInvoicePdf(data: InvoiceData) {
   doc.setFontSize(10);
   doc.text(`N° ${data.invoiceNumber}`, 555, 68, { align: "right" });
   doc.text(data.createdAt.toLocaleString("fr-FR"), 555, 82, { align: "right" });
+  if (data.cancelled) {
+    doc.setTextColor(200, 30, 30);
+    doc.setFont("helvetica", "bold");
+    doc.text(`ANNULÉE le ${data.cancelled.at.toLocaleString("fr-FR")}`, 555, 96, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+  }
 
   y = Math.max(y, 96) + 14;
   doc.setDrawColor(200);
@@ -113,6 +123,20 @@ export function buildInvoicePdf(data: InvoiceData) {
   doc.text(`${fmt(data.total)} ${currency}`, totalsX, y, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
+  if (data.returnedTotal && data.returnedTotal > 0) {
+    y += 16;
+    doc.text(`Articles retournés`, 430, y);
+    doc.text(`-${fmt(data.returnedTotal)} ${currency}`, totalsX, y, { align: "right" });
+  }
+  if (data.balanceDue && data.balanceDue > 0 && !data.cancelled) {
+    y += 16;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(200, 30, 30);
+    doc.text(`Reste à payer`, 430, y);
+    doc.text(`${fmt(data.balanceDue)} ${currency}`, totalsX, y, { align: "right" });
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "normal");
+  }
 
   y += 40;
   doc.setDrawColor(220);
@@ -120,6 +144,10 @@ export function buildInvoicePdf(data: InvoiceData) {
   y += 16;
   doc.setTextColor(120);
   doc.text("Facture générée électroniquement — ne nécessite pas de signature.", 40, y);
+  if (data.cancelled?.reason) {
+    y += 12;
+    doc.text(`Motif d'annulation : ${data.cancelled.reason}`, 40, y);
+  }
 
   return Buffer.from(doc.output("arraybuffer"));
 }

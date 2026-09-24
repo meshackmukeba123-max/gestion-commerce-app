@@ -48,6 +48,12 @@ describe("can", () => {
     expect(can(s, STORE_A, "stock:write")).toBe(false);
     expect(can(s, STORE_A, "finances:read")).toBe(false);
   });
+
+  it("réserve l'annulation de vente aux gestionnaires et administrateurs", () => {
+    expect(can(session("VENDEUR"), STORE_A, "ventes:cancel")).toBe(false);
+    expect(can(session("GESTIONNAIRE"), STORE_A, "ventes:cancel")).toBe(true);
+    expect(can(session("ADMIN"), STORE_A, "ventes:cancel")).toBe(true);
+  });
 });
 
 describe("roleForStore", () => {
