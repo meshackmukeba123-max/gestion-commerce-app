@@ -81,6 +81,7 @@ export async function createSale(input: SaleInput) {
         clientPhone: input.clientPhone || customer?.phone || undefined,
         customerId: customer?.id,
         balanceDue,
+        amountPaid: round2(total - balanceDue),
         paymentMethod: input.paymentMethod,
         paymentRef: input.paymentRef,
         offlineId: input.offlineId,

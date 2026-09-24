@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useSyncExternalStore } from "react";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, apiPost, withStore, ApiClientError } from "@/lib/api-client";
 import { BarcodeScannerButton } from "@/components/stock/BarcodeScannerButton";
@@ -14,6 +14,29 @@ type Product = { id: string; name: string; barcode: string | null; sku: string |
 type CartItem = { productId: string; name: string; unitPrice: number; quantity: number; maxQuantity: number };
 type PaymentMethod = "MAGASIN" | "MOBILE_MONEY" | "CARTE" | "VIREMENT";
 type Customer = { id: string; name: string; phone: string | null; creditLimit: number | null; balance: number };
+type PrintMode = "invoice" | "ticket80" | "ticket58" | "none";
+const PRINT_MODE_KEY = "gc-print-mode";
+
+/** Ce qui s'ouvre à l'impression après un encaissement ; préférence mémorisée sur cet appareil. */
+function readPrintMode(): PrintMode {
+  try {
+    const v = localStorage.getItem(PRINT_MODE_KEY);
+    return v === "ticket80" || v === "ticket58" || v === "none" ? v : "invoice";
+  } catch {
+    return "invoice";
+  }
+}
+
+function subscribePrintMode(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  return () => window.removeEventListener("storage", onChange);
+}
+
+function printUrl(saleId: string, mode: PrintMode) {
+  if (mode === "ticket80") return `/ventes/${saleId}/ticket?w=80&print=1`;
+  if (mode === "ticket58") return `/ventes/${saleId}/ticket?w=58&print=1`;
+  return `/ventes/${saleId}?print=1`;
+}
 
 export default function VentesPage() {
   const { activeStore } = useSession();
@@ -36,6 +59,19 @@ export default function VentesPage() {
   const [amountPaid, setAmountPaid] = useState("0");
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [newCustomerError, setNewCustomerError] = useState<string | null>(null);
+  // Préférence lue dans le stockage local (absent côté serveur : « facture » par défaut).
+  const savedPrintMode = useSyncExternalStore(subscribePrintMode, readPrintMode, () => "invoice" as PrintMode);
+  const [printModeOverride, setPrintModeOverride] = useState<PrintMode | null>(null);
+  const printMode = printModeOverride ?? savedPrintMode;
+
+  function changePrintMode(mode: PrintMode) {
+    setPrintModeOverride(mode);
+    try {
+      localStorage.setItem(PRINT_MODE_KEY, mode);
+    } catch {
+      // stockage indisponible (navigation privée) : le choix vaut pour cette page seulement
+    }
+  }
 
   const loadCustomers = useCallback(() => {
     apiGet<Customer[]>(withStore("/api/customers", activeStore.storeId))
@@ -210,7 +246,7 @@ export default function VentesPage() {
             : "Vente enregistrée avec succès.",
       });
       setLastSaleId(created.id);
-      window.open(`/ventes/${created.id}?print=1`, "_blank");
+      if (printMode !== "none") window.open(printUrl(created.id, printMode), "_blank");
       setCart([]);
       resetClient();
       load();
@@ -432,6 +468,16 @@ export default function VentesPage() {
             📄 Voir / télécharger la facture
           </Link>
         )}
+
+        <label className="flex items-center justify-between gap-2 text-xs text-neutral-500">
+          <span>Imprimer après encaissement</span>
+          <select className="input w-auto px-2 py-1 text-xs" value={printMode} onChange={(e) => changePrintMode(e.target.value as PrintMode)}>
+            <option value="invoice">Facture A4</option>
+            <option value="ticket80">Ticket 80 mm</option>
+            <option value="ticket58">Ticket 58 mm</option>
+            <option value="none">Rien</option>
+          </select>
+        </label>
 
         <button onClick={checkout} disabled={cart.length === 0 || processing} className="btn-primary w-full">
           {processing ? "Traitement…" : onCredit ? "Enregistrer la vente à crédit" : "Encaisser"}

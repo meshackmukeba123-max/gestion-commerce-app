@@ -122,6 +122,18 @@ export default function SettingsPage() {
       </form>
 
       <div className="card space-y-2">
+        <h2 className="text-sm font-semibold">Sauvegarde des données</h2>
+        <p className="text-sm text-neutral-500">
+          Téléchargez toutes les données de la boutique dans un seul fichier Excel : produits, ventes, retours, clients et
+          dettes, dépenses, fournisseurs, commandes, mouvements de stock et clôtures de caisse. Conservez-le en lieu sûr
+          (clé USB, e-mail), par exemple une fois par semaine.
+        </p>
+        <a href={`/api/export?storeId=${activeStore.storeId}`} className="btn-secondary">
+          💾 Télécharger l&apos;export complet (Excel)
+        </a>
+      </div>
+
+      <div className="card space-y-2">
         <h2 className="text-sm font-semibold">Mobile Money</h2>
         <p className="text-sm text-neutral-500">
           Le mode démo (MOCK) fonctionne sans configuration. Pour accepter de vrais paiements Orange Money, Airtel

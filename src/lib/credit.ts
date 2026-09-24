@@ -25,3 +25,17 @@ export function computeBalanceDue(total: number, amountPaid: number | undefined,
   if (balanceDue > 0 && !hasCustomer) throw new Error("Sélectionnez un client pour une vente à crédit");
   return balanceDue;
 }
+
+/** Au-delà de ce délai, une dette non soldée est considérée en retard. */
+export const OVERDUE_DAYS = 30;
+
+/** Nombre de jours écoulés depuis la plus ancienne vente impayée, ou null s'il n'y en a pas. */
+export function daysOverdue(oldestUnpaidAt: Date | string | null, now = new Date()) {
+  if (!oldestUnpaidAt) return null;
+  return Math.floor((now.getTime() - new Date(oldestUnpaidAt).getTime()) / (24 * 3600 * 1000));
+}
+
+export function isOverdue(oldestUnpaidAt: Date | string | null, now = new Date()) {
+  const days = daysOverdue(oldestUnpaidAt, now);
+  return days !== null && days >= OVERDUE_DAYS;
+}

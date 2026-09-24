@@ -40,6 +40,15 @@ export function IconCustomers({ className }: IconProps) {
   );
 }
 
+export function IconCashRegister({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth={2} className={className}>
+      <rect x="3" y="11" width="18" height="10" rx="2" />
+      <path d="M6 11V5h8v6M9 8h2M7 15h2M11 15h2M15 15h2M7 18h10" />
+    </svg>
+  );
+}
+
 export function IconInventory({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth={2} className={className}>

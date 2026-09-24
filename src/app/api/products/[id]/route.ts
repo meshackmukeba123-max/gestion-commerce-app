@@ -34,12 +34,36 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const parsed = productSchema.partial().safeParse(body);
     if (!parsed.success) throw new ApiError(parsed.error.issues[0]?.message ?? "Données invalides", 400);
 
-    const product = await db.product.update({
-      where: { id },
-      data: {
-        ...parsed.data,
-        expirationDate: parsed.data.expirationDate ? new Date(parsed.data.expirationDate) : undefined,
-      },
+    // Seuls les champs réellement envoyés sont modifiés : les valeurs par défaut du schéma (prix 0,
+    // quantité 0…) ne doivent jamais écraser un produit existant.
+    const sent = Object.fromEntries(Object.entries(parsed.data).filter(([key]) => key in body)) as typeof parsed.data;
+    const { quantity, expirationDate, ...fields } = sent;
+
+    const product = await db.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id },
+        data: {
+          ...fields,
+          // Date vide = pas de date d'expiration.
+          ...("expirationDate" in sent ? { expirationDate: expirationDate ? new Date(expirationDate) : null } : {}),
+        },
+      });
+      // Changement manuel de quantité : appliqué en relatif et tracé dans les mouvements de stock.
+      if (quantity !== undefined && quantity !== existing.quantity) {
+        const diff = quantity - existing.quantity;
+        await tx.stockMovement.create({
+          data: {
+            storeId: existing.storeId,
+            productId: id,
+            type: "AJUSTEMENT",
+            quantity: Math.abs(diff),
+            reason: `Modification de la fiche produit : ${diff > 0 ? "+" : ""}${diff}`,
+            userId: session.userId,
+          },
+        });
+        return tx.product.update({ where: { id }, data: { quantity: { increment: diff } } });
+      }
+      return updated;
     });
     return NextResponse.json(product);
   } catch (err) {

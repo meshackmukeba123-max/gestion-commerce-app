@@ -74,6 +74,9 @@ export default function FinancesPage() {
               </option>
             ))}
           </select>
+          <a href={withStore("/api/export", activeStore.storeId)} className="btn-secondary" title="Toutes les données de la boutique dans un fichier Excel">
+            💾 Export complet
+          </a>
           <Link href="/finances/produits" className="btn-secondary">
             📦 Par produit
           </Link>

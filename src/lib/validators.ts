@@ -74,6 +74,16 @@ export const inventoryCountsSchema = z.object({
     .min(1),
 });
 
+export const cashClosingSchema = z.object({
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide"),
+  from: z.string().datetime({ offset: true }),
+  to: z.string().datetime({ offset: true }),
+  openingFloat: z.coerce.number().min(0, "Fond de caisse invalide").default(0),
+  countedCash: z.coerce.number().min(0, "Montant compté invalide"),
+  expensesFromCash: z.boolean().default(true),
+  notes: z.string().trim().optional(),
+});
+
 export const expenseSchema = z.object({
   category: z.enum([
     "LOYER",

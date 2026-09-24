@@ -14,6 +14,9 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim();
     const lowStock = url.searchParams.get("lowStock") === "1";
+    // Produits périmés ou qui expirent dans les 30 jours.
+    const expiring = url.searchParams.get("expiring") === "1";
+    const soon = new Date(Date.now() + 30 * 24 * 3600 * 1000);
 
     const products = await db.product.findMany({
       where: {
@@ -22,15 +25,16 @@ export async function GET(req: Request) {
         ...(q
           ? {
               OR: [
-                { name: { contains: q } },
-                { sku: { contains: q } },
+                { name: { contains: q, mode: "insensitive" } },
+                { sku: { contains: q, mode: "insensitive" } },
                 { barcode: { contains: q } },
               ],
             }
           : {}),
+        ...(expiring ? { expirationDate: { not: null, lte: soon } } : {}),
       },
       include: { category: true },
-      orderBy: { name: "asc" },
+      orderBy: expiring ? { expirationDate: "asc" } : { name: "asc" },
     });
 
     const filtered = lowStock ? products.filter((p) => p.quantity <= p.alertThreshold) : products;

@@ -9,8 +9,9 @@ import { Modal } from "@/components/ui/Modal";
 import { CustomerForm, type CustomerFormValues } from "@/components/clients/CustomerForm";
 import { useStoreInfo } from "@/components/providers/useStoreInfo";
 import { whatsappLink, countryCodeFromStorePhone, formatAmount } from "@/lib/whatsapp";
+import { daysOverdue, OVERDUE_DAYS } from "@/lib/credit";
 
-type Customer = { id: string; name: string; phone: string | null; creditLimit: number | null; balance: number };
+type Customer = { id: string; name: string; phone: string | null; creditLimit: number | null; balance: number; oldestUnpaidAt: string | null };
 
 function ClientsList() {
   const { activeStore } = useSession();
@@ -18,6 +19,7 @@ function ClientsList() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [q, setQ] = useState("");
   const [debtOnly, setDebtOnly] = useState(searchParams.get("debt") === "1");
+  const [lateOnly, setLateOnly] = useState(searchParams.get("late") === "1");
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const store = useStoreInfo(activeStore.storeId);
@@ -31,9 +33,9 @@ function ClientsList() {
       : null;
 
   const load = useCallback(() => {
-    const url = withStore("/api/customers", activeStore.storeId) + (q ? `&q=${encodeURIComponent(q)}` : "") + (debtOnly ? "&debt=1" : "");
+    const url = withStore("/api/customers", activeStore.storeId) + (q ? `&q=${encodeURIComponent(q)}` : "") + (debtOnly ? "&debt=1" : "") + (lateOnly ? "&late=1" : "");
     apiGet<Customer[]>(url).then(setCustomers);
-  }, [activeStore.storeId, q, debtOnly]);
+  }, [activeStore.storeId, q, debtOnly, lateOnly]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -73,6 +75,10 @@ function ClientsList() {
           <input type="checkbox" checked={debtOnly} onChange={(e) => setDebtOnly(e.target.checked)} />
           Avec dette uniquement
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={lateOnly} onChange={(e) => setLateOnly(e.target.checked)} />
+          En retard (plus de {OVERDUE_DAYS} jours)
+        </label>
       </div>
 
       <div className="card overflow-x-auto p-0">
@@ -98,6 +104,11 @@ function ClientsList() {
                 <td className="text-right">{c.creditLimit !== null ? c.creditLimit.toLocaleString("fr-FR") : "—"}</td>
                 <td className={`text-right font-medium ${c.balance > 0 ? "text-amber-600" : "text-neutral-400"}`}>
                   {c.balance.toLocaleString("fr-FR")}
+                  {(daysOverdue(c.oldestUnpaidAt) ?? 0) >= OVERDUE_DAYS && (
+                    <span className="ml-2 inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
+                      en retard · {daysOverdue(c.oldestUnpaidAt)} j
+                    </span>
+                  )}
                 </td>
                 <td className="text-right">
                   {reminder(c) && (
@@ -116,7 +127,7 @@ function ClientsList() {
             {customers.length === 0 && (
               <tr>
                 <td colSpan={5} className="py-6 text-center text-neutral-500">
-                  {debtOnly ? "Aucun client n'a de dette." : "Aucun client enregistré."}
+                  {lateOnly ? "Aucun client en retard de paiement." : debtOnly ? "Aucun client n'a de dette." : "Aucun client enregistré."}
                 </td>
               </tr>
             )}

@@ -44,6 +44,7 @@ model Store {
   customerPayments CustomerPayment[]
   saleReturns      SaleReturn[]
   inventories      InventoryCount[]
+  cashClosings     CashClosing[]
 }
 
 model User {
@@ -61,6 +62,7 @@ model User {
   saleReturns          SaleReturn[]      @relation("ReturnedBy")
   inventoriesStarted   InventoryCount[]  @relation("InventoryStartedBy")
   inventoriesValidated InventoryCount[]  @relation("InventoryValidatedBy")
+  cashClosings         CashClosing[]     @relation("ClosedBy")
   stockMovements       StockMovement[]   @relation("MovedBy")
 }
 
@@ -223,6 +225,9 @@ model Sale {
   // 0 pour une vente payée comptant (y compris toutes les ventes antérieures au crédit).
   customerId    String?
   balanceDue    Float       @default(0)
+  // Montant réellement encaissé au moment de la vente (acompte pour une vente à crédit).
+  // Vide pour les ventes antérieures à la clôture de caisse.
+  amountPaid    Float?
 
   store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   user        User?        @relation("SoldBy", fields: [userId], references: [id])
@@ -417,4 +422,24 @@ model MobileMoneyTransaction {
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
+}
+
+// Clôture de caisse : comptage du tiroir en fin de journée, comparé aux encaissements calculés.
+model CashClosing {
+  id           String   @id @default(cuid())
+  storeId      String
+  userId       String?
+  day          String // Journée clôturée, AAAA-MM-JJ
+  openingFloat Float    @default(0) // Fond de caisse du matin
+  expectedCash Float // Espèces attendues : fond + encaissements - remboursements - sorties
+  countedCash  Float // Espèces réellement comptées
+  difference   Float // countedCash - expectedCash
+  summary      Json // Détail des montants au moment de la clôture
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User? @relation("ClosedBy", fields: [userId], references: [id])
+
+  @@index([storeId, day])
 }

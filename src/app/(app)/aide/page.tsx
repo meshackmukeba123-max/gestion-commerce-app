@@ -258,6 +258,19 @@ export default function GuidePage() {
             était chargée avant la coupure. Les clients, retours et inventaires demandent une connexion.
           </li>
           <li>
+            <b>Clôture de caisse :</b> en fin de journée, ouvrez « Clôture de caisse », saisissez le fond de caisse du matin
+            et les espèces comptées dans le tiroir : l&apos;application calcule ce qui devrait y être et affiche l&apos;écart.
+            Enregistrez la clôture pour garder une trace (historique en bas de page).
+          </li>
+          <li>
+            <b>Ticket de caisse :</b> sur une facture, « 🧾 Ticket » imprime un ticket pour imprimante thermique (80 ou 58
+            mm). À la caisse, choisissez « Imprimer après encaissement : Ticket » pour qu&apos;il s&apos;ouvre tout seul.
+          </li>
+          <li>
+            <b>Sauvegarde :</b> Paramètres → « Télécharger l&apos;export complet » : toutes vos données dans un fichier
+            Excel. Faites-le régulièrement et gardez le fichier en lieu sûr.
+          </li>
+          <li>
             <b>Que commander ?</b> Stock → « À réapprovisionner » calcule, d&apos;après le rythme de vos ventes, combien de
             jours de stock il vous reste et la quantité à commander, puis crée la commande fournisseur en un clic.
           </li>

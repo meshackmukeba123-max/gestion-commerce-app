@@ -162,6 +162,9 @@ function SaleDetail({ id }: { id: string }) {
               📱 WhatsApp
             </a>
           )}
+          <Link href={`/ventes/${sale.id}/ticket`} className="btn-secondary">
+            🧾 Ticket
+          </Link>
           <button onClick={() => window.print()} className="btn-secondary">
             🖨️ Imprimer
           </button>
