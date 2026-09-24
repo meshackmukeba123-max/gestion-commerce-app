@@ -263,8 +263,13 @@ export default function GuidePage() {
             Enregistrez la clôture pour garder une trace (historique en bas de page).
           </li>
           <li>
-            <b>Ticket de caisse :</b> sur une facture, « 🧾 Ticket » imprime un ticket pour imprimante thermique (80 ou 58
-            mm). À la caisse, choisissez « Imprimer après encaissement : Ticket » pour qu&apos;il s&apos;ouvre tout seul.
+            <b>Ticket ou reçu (en plus de la facture) :</b> après une vente, à la caisse, « 🧾 Ticket / reçu » ; aussi sur
+            la facture et dans l&apos;historique. Trois formats : ticket 80 mm ou 58 mm (imprimante thermique) ou reçu A5
+            (imprimante normale). À la caisse, « Imprimer après encaissement » l&apos;ouvre tout seul après chaque vente.
+          </li>
+          <li>
+            <b>Reçu de paiement :</b> quand un client rembourse une dette, cliquez sur « 🧾 Imprimer le reçu » (ou sur 🧾
+            dans la liste des remboursements de sa fiche) : le reçu indique le montant reçu et ce qu&apos;il reste à payer.
           </li>
           <li>
             <b>Sauvegarde :</b> Paramètres → « Télécharger l&apos;export complet » : toutes vos données dans un fichier

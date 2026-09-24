@@ -1,10 +1,17 @@
 "use client";
 
 import { use, useEffect, useState, Suspense } from "react";
-import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api-client";
 import { PAYMENT_LABELS, type PaymentMethod } from "@/lib/cash";
+import {
+  ReceiptPaper,
+  ReceiptDivider,
+  ReceiptLine,
+  ReceiptStoreHeader,
+  ReceiptToolbar,
+  parseReceiptFormat,
+} from "@/components/receipt/ReceiptPaper";
 
 type Sale = {
   id: string;
@@ -27,7 +34,7 @@ type Sale = {
 function Ticket({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const width = searchParams.get("w") === "58" ? 58 : 80;
+  const format = parseReceiptFormat(searchParams.get("w"));
   const [sale, setSale] = useState<Sale | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,93 +60,46 @@ function Ticket({ id }: { id: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Taille du papier : ne s'applique qu'à l'impression de cette page. */}
-      <style>{`@media print { @page { size: ${width}mm auto; margin: 2mm; } html, body { width: ${width - 4}mm; } main { padding: 0 !important; max-width: none !important; } }`}</style>
+      <ReceiptToolbar
+        backHref={`/ventes/${sale.id}`}
+        backLabel="Facture"
+        format={format}
+        onFormatChange={(f) => router.replace(`/ventes/${sale.id}/ticket?w=${f}`)}
+      />
 
-      <div className="no-print flex flex-wrap items-center gap-2">
-        <Link href={`/ventes/${sale.id}`} className="text-sm text-neutral-500 hover:underline">
-          ← Facture
-        </Link>
-        <span className="flex-1" />
-        <select
-          className="input w-auto"
-          aria-label="Largeur du papier"
-          value={width}
-          onChange={(e) => router.replace(`/ventes/${sale.id}/ticket?w=${e.target.value}`)}
-        >
-          <option value={80}>Papier 80 mm</option>
-          <option value={58}>Papier 58 mm</option>
-        </select>
-        <button onClick={() => window.print()} className="btn-primary">
-          🖨️ Imprimer le ticket
-        </button>
-      </div>
-
-      <div
-        className="mx-auto bg-white p-3 font-mono text-[12px] leading-snug text-black shadow print:p-0 print:shadow-none"
-        style={{ width: `${width - 4}mm` }}
-      >
-        <div className="text-center">
-          <p className="text-[14px] font-bold">{sale.store.name}</p>
-          {sale.store.address && <p>{sale.store.address}</p>}
-          {sale.store.phone && <p>Tél : {sale.store.phone}</p>}
-          {(sale.store.taxId || sale.store.rccm) && (
-            <p>{[sale.store.taxId && `NIF ${sale.store.taxId}`, sale.store.rccm && `RCCM ${sale.store.rccm}`].filter(Boolean).join(" · ")}</p>
-          )}
-        </div>
-        <Divider />
-        <p>Ticket : {sale.invoiceNumber ?? sale.id.slice(-8)}</p>
+      <ReceiptPaper format={format}>
+        <ReceiptStoreHeader store={sale.store} />
+        <ReceiptDivider />
+        <p className="text-center font-bold">{format === "a5" ? "REÇU DE VENTE" : "TICKET DE CAISSE"}</p>
+        <p>N° : {sale.invoiceNumber ?? sale.id.slice(-8)}</p>
         <p>{new Date(sale.createdAt).toLocaleString("fr-FR")}</p>
         <p>Vendeur : {sale.user?.name ?? "-"}</p>
         {sale.clientName && <p>Client : {sale.clientName}</p>}
         {sale.cancelledAt && <p className="text-center font-bold">*** VENTE ANNULÉE ***</p>}
-        <Divider />
+        <ReceiptDivider />
         {sale.items.map((i, idx) => (
           <div key={idx}>
             <p>{i.product.name}</p>
-            <p className="flex justify-between">
-              <span>
-                {fmt(i.quantity)} x {fmt(i.unitPrice)}
-              </span>
-              <span>{fmt(i.total)}</span>
-            </p>
+            <ReceiptLine label={`${fmt(i.quantity)} x ${fmt(i.unitPrice)}`} value={fmt(i.total)} />
           </div>
         ))}
-        <Divider />
-        <Line label="Sous-total" value={fmt(sale.subtotal)} />
-        <Line label={`Taxe ${sale.store.taxRate}%`} value={fmt(sale.taxAmount)} />
-        <p className="flex justify-between text-[14px] font-bold">
+        <ReceiptDivider />
+        <ReceiptLine label="Sous-total" value={fmt(sale.subtotal)} />
+        <ReceiptLine label={`Taxe ${sale.store.taxRate}%`} value={fmt(sale.taxAmount)} />
+        <p className="flex justify-between text-[1.15em] font-bold">
           <span>TOTAL</span>
           <span>
             {fmt(sale.total)} {cur}
           </span>
         </p>
-        {returned > 0 && <Line label="Retours" value={`-${fmt(returned)}`} />}
-        <Divider />
-        <Line label={`Payé (${PAYMENT_LABELS[sale.paymentMethod]})`} value={fmt(paid)} />
-        {sale.balanceDue > 0 && !sale.cancelledAt && (
-          <p className="flex justify-between font-bold">
-            <span>RESTE À PAYER</span>
-            <span>{fmt(sale.balanceDue)}</span>
-          </p>
-        )}
-        <Divider />
+        {returned > 0 && <ReceiptLine label="Retours" value={`-${fmt(returned)}`} />}
+        <ReceiptDivider />
+        <ReceiptLine label={`Payé (${PAYMENT_LABELS[sale.paymentMethod]})`} value={fmt(paid)} />
+        {sale.balanceDue > 0 && !sale.cancelledAt && <ReceiptLine label="RESTE À PAYER" value={fmt(sale.balanceDue)} bold />}
+        <ReceiptDivider />
         <p className="text-center">Merci de votre visite !</p>
-      </div>
+      </ReceiptPaper>
     </div>
-  );
-}
-
-function Divider() {
-  return <p className="my-1 overflow-hidden whitespace-nowrap">{"-".repeat(60)}</p>;
-}
-
-function Line({ label, value }: { label: string; value: string }) {
-  return (
-    <p className="flex justify-between">
-      <span>{label}</span>
-      <span>{value}</span>
-    </p>
   );
 }
 

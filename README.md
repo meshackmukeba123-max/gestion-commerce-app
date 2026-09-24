@@ -41,8 +41,12 @@ mobile money.
   mode de paiement (ventes, dettes remboursées, sommes rendues aux clients), crédit accordé, retours ;
   saisie du fond de caisse et des espèces comptées, calcul des espèces attendues et de l'écart,
   impression et historique des clôtures.
-- **Ticket de caisse** pour imprimante thermique (80 mm ou 58 mm), depuis la facture ou
-  automatiquement après l'encaissement (choix « Imprimer après encaissement » mémorisé sur l'appareil).
+- **Ticket de caisse / reçu**, en plus de la facture : ticket pour imprimante thermique (80 mm ou
+  58 mm) ou reçu A5 pour imprimante normale. Accessible depuis la caisse juste après la vente, la
+  facture et l'historique, ou imprimé automatiquement après l'encaissement (choix « Imprimer après
+  encaissement » mémorisé sur l'appareil).
+- **Reçu de paiement** quand un client rembourse une dette (montant, mode, reste dû), imprimable
+  dans les mêmes formats depuis la fiche client.
 - **Alertes** : clients en retard de paiement (dette de plus de 30 jours) sur le tableau de bord et
   dans la liste des clients ; filtre « Périmés ou expirant sous 30 jours » dans le stock.
 - **Export complet** (Paramètres ou Finances) : toutes les données de la boutique dans un seul
