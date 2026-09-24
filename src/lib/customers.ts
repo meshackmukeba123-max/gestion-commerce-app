@@ -5,15 +5,18 @@ import { round2 } from "@/lib/tax";
 
 type PaymentMethod = "MAGASIN" | "MOBILE_MONEY" | "CARTE" | "VIREMENT";
 
-/** Dettes (reste dû) de plusieurs clients en une requête. */
-export async function balancesByCustomer(customerIds: string[]) {
-  if (customerIds.length === 0) return new Map<string, number>();
+/** Dette (reste dû) et date de la plus ancienne vente impayée de plusieurs clients, en une requête. */
+export async function debtsByCustomer(customerIds: string[]) {
+  if (customerIds.length === 0) return new Map<string, { balance: number; oldestUnpaidAt: Date | null }>();
   const rows = await db.sale.groupBy({
     by: ["customerId"],
     where: { customerId: { in: customerIds }, cancelledAt: null, balanceDue: { gt: 0 } },
     _sum: { balanceDue: true },
+    _min: { createdAt: true },
   });
-  return new Map(rows.map((r) => [r.customerId as string, round2(r._sum.balanceDue ?? 0)]));
+  return new Map(
+    rows.map((r) => [r.customerId as string, { balance: round2(r._sum.balanceDue ?? 0), oldestUnpaidAt: r._min.createdAt }])
+  );
 }
 
 /**

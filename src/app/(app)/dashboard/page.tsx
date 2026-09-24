@@ -19,6 +19,8 @@ type DashboardData = {
   revenueTrend: { date: string; total: number }[];
   productsCount: number;
   receivables: number;
+  overdueCustomersCount: number;
+  overdueDays: number;
 };
 
 type Sale = {
@@ -127,7 +129,7 @@ export default function DashboardPage() {
                     .
                   </span>
                 </div>
-                <Link href="/stock" className="shrink-0 font-semibold underline underline-offset-2">
+                <Link href="/stock?lowStock=1" className="shrink-0 font-semibold underline underline-offset-2">
                   Voir le stock
                 </Link>
               </div>
@@ -140,12 +142,27 @@ export default function DashboardPage() {
                     <b className="font-semibold">Dates d&apos;expiration.</b> {data.expiredCount} produit(s) expiré(s), {data.expiringSoonCount} expirant sous 30 jours.
                   </span>
                 </div>
-                <Link href="/stock" className="shrink-0 font-semibold underline underline-offset-2">
+                <Link href="/stock?expiring=1" className="shrink-0 font-semibold underline underline-offset-2">
                   Voir le stock
                 </Link>
               </div>
             )}
           </div>
+
+          {data.overdueCustomersCount > 0 && (
+            <div className="-mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/60 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-300">
+              <div className="flex items-center gap-2.5">
+                <IconAlert className="h-[18px] w-[18px] shrink-0" />
+                <span>
+                  <b className="font-semibold">Clients en retard de paiement.</b> {data.overdueCustomersCount} client(s) doivent de
+                  l&apos;argent depuis plus de {data.overdueDays} jours.
+                </span>
+              </div>
+              <Link href="/clients?late=1" className="shrink-0 font-semibold underline underline-offset-2">
+                Relancer
+              </Link>
+            </div>
+          )}
 
           {/* KPIs */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">

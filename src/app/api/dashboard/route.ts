@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireSession, requireStoreAccess, getStoreIdParam, handleApiError } from "@/lib/api-helpers";
 import { round2 } from "@/lib/tax";
+import { OVERDUE_DAYS } from "@/lib/credit";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,8 @@ export async function GET(req: Request) {
     const start14 = new Date(startOfToday);
     start14.setDate(start14.getDate() - 13);
 
-    const [products, salesToday, sales14d, expenses30d, returns14d, receivables] = await Promise.all([
+    const overdueBefore = new Date(now.getTime() - OVERDUE_DAYS * 24 * 3600 * 1000);
+    const [products, salesToday, sales14d, expenses30d, returns14d, receivables, overdue] = await Promise.all([
       db.product.findMany({ where: { storeId, active: true } }),
       db.sale.findMany({ where: { storeId, cancelledAt: null, createdAt: { gte: startOfToday } } }),
       db.sale.findMany({ where: { storeId, cancelledAt: null, createdAt: { gte: start14 } }, select: { total: true, createdAt: true } }),
@@ -31,6 +33,11 @@ export async function GET(req: Request) {
       db.sale.aggregate({
         where: { storeId, cancelledAt: null, balanceDue: { gt: 0 } },
         _sum: { balanceDue: true },
+      }),
+      // Clients dont une vente à crédit reste impayée depuis plus de OVERDUE_DAYS jours.
+      db.sale.groupBy({
+        by: ["customerId"],
+        where: { storeId, cancelledAt: null, balanceDue: { gt: 0 }, customerId: { not: null }, createdAt: { lt: overdueBefore } },
       }),
     ]);
 
@@ -67,6 +74,8 @@ export async function GET(req: Request) {
       revenueTrend: Array.from(byDay.entries()).map(([date, total]) => ({ date, total })),
       productsCount: products.length,
       receivables: round2(receivables._sum.balanceDue ?? 0),
+      overdueCustomersCount: overdue.length,
+      overdueDays: OVERDUE_DAYS,
     });
   } catch (err) {
     return handleApiError(err);

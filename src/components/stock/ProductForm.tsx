@@ -49,7 +49,10 @@ export function ProductForm({ product, onSaved }: { product?: Product; onSaved?:
     try {
       const payload = { ...form, storeId: activeStore.storeId };
       if (product?.id) {
-        await apiPut(`/api/products/${product.id}`, payload);
+        // La quantité n'est envoyée que si elle a été modifiée ici : sinon une vente faite pendant
+        // l'édition serait écrasée par la quantité affichée à l'ouverture du formulaire.
+        const { quantity, ...rest } = payload;
+        await apiPut(`/api/products/${product.id}`, quantity !== product.quantity ? payload : rest);
       } else {
         await apiPost("/api/products", payload);
       }

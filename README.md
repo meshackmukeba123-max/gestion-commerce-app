@@ -37,6 +37,16 @@ mobile money.
   acompte ou paiement différé depuis la caisse, suivi du « reste dû » par facture, encaissement
   des remboursements (répartis automatiquement sur les dettes les plus anciennes). Le total des
   créances apparaît sur le tableau de bord et dans les rapports.
+- **Clôture de caisse** (menu « Clôture de caisse », tous les rôles) : encaissements du jour par
+  mode de paiement (ventes, dettes remboursées, sommes rendues aux clients), crédit accordé, retours ;
+  saisie du fond de caisse et des espèces comptées, calcul des espèces attendues et de l'écart,
+  impression et historique des clôtures.
+- **Ticket de caisse** pour imprimante thermique (80 mm ou 58 mm), depuis la facture ou
+  automatiquement après l'encaissement (choix « Imprimer après encaissement » mémorisé sur l'appareil).
+- **Alertes** : clients en retard de paiement (dette de plus de 30 jours) sur le tableau de bord et
+  dans la liste des clients ; filtre « Périmés ou expirant sous 30 jours » dans le stock.
+- **Export complet** (Paramètres ou Finances) : toutes les données de la boutique dans un seul
+  fichier Excel, un onglet par type de donnée, à conserver comme sauvegarde.
 - **Analyse par produit** (Finances → « Par produit ») : quantités vendues, chiffre d'affaires,
   coût d'achat et marge de chaque produit sur la période choisie (retours déduits), produits à
   marge faible signalés, export Excel.

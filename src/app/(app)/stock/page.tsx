@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/components/providers/SessionProvider";
 import { apiGet, withStore } from "@/lib/api-client";
@@ -17,20 +18,22 @@ type Product = {
   expirationDate: string | null;
 };
 
-export default function StockPage() {
+function StockList() {
   const { activeStore } = useSession();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [q, setQ] = useState("");
-  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [lowStockOnly, setLowStockOnly] = useState(searchParams.get("lowStock") === "1");
+  const [expiringOnly, setExpiringOnly] = useState(searchParams.get("expiring") === "1");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
     setLoading(true);
-    const url = withStore("/api/products", activeStore.storeId) + (q ? `&q=${encodeURIComponent(q)}` : "") + (lowStockOnly ? "&lowStock=1" : "");
+    const url = withStore("/api/products", activeStore.storeId) + (q ? `&q=${encodeURIComponent(q)}` : "") + (lowStockOnly ? "&lowStock=1" : "") + (expiringOnly ? "&expiring=1" : "");
     apiGet<Product[]>(url)
       .then(setProducts)
       .finally(() => setLoading(false));
-  }, [activeStore.storeId, q, lowStockOnly]);
+  }, [activeStore.storeId, q, lowStockOnly, expiringOnly]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -53,6 +56,10 @@ export default function StockPage() {
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={lowStockOnly} onChange={(e) => setLowStockOnly(e.target.checked)} />
           Stock bas uniquement
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={expiringOnly} onChange={(e) => setExpiringOnly(e.target.checked)} />
+          Périmés ou expirant sous 30 jours
         </label>
         {activeStore.role !== "VENDEUR" && (
           <>
@@ -136,5 +143,13 @@ export default function StockPage() {
         </table>
       </div>
     </div>
+  );
+}
+
+export default function StockPage() {
+  return (
+    <Suspense>
+      <StockList />
+    </Suspense>
   );
 }
