@@ -14,14 +14,14 @@ type Product = { id: string; name: string; barcode: string | null; sku: string |
 type CartItem = { productId: string; name: string; unitPrice: number; quantity: number; maxQuantity: number };
 type PaymentMethod = "MAGASIN" | "MOBILE_MONEY" | "CARTE" | "VIREMENT";
 type Customer = { id: string; name: string; phone: string | null; creditLimit: number | null; balance: number };
-type PrintMode = "invoice" | "ticket80" | "ticket58" | "none";
+type PrintMode = "invoice" | "ticket80" | "ticket58" | "recuA5" | "none";
 const PRINT_MODE_KEY = "gc-print-mode";
 
 /** Ce qui s'ouvre à l'impression après un encaissement ; préférence mémorisée sur cet appareil. */
 function readPrintMode(): PrintMode {
   try {
     const v = localStorage.getItem(PRINT_MODE_KEY);
-    return v === "ticket80" || v === "ticket58" || v === "none" ? v : "invoice";
+    return v === "ticket80" || v === "ticket58" || v === "recuA5" || v === "none" ? v : "invoice";
   } catch {
     return "invoice";
   }
@@ -35,6 +35,7 @@ function subscribePrintMode(onChange: () => void) {
 function printUrl(saleId: string, mode: PrintMode) {
   if (mode === "ticket80") return `/ventes/${saleId}/ticket?w=80&print=1`;
   if (mode === "ticket58") return `/ventes/${saleId}/ticket?w=58&print=1`;
+  if (mode === "recuA5") return `/ventes/${saleId}/ticket?w=a5&print=1`;
   return `/ventes/${saleId}?print=1`;
 }
 
@@ -464,9 +465,14 @@ export default function VentesPage() {
         )}
 
         {lastSaleId && (
-          <Link href={`/ventes/${lastSaleId}`} className="btn-secondary block w-full text-center">
-            📄 Voir / télécharger la facture
-          </Link>
+          <div className="grid grid-cols-2 gap-2">
+            <Link href={`/ventes/${lastSaleId}`} className="btn-secondary text-center">
+              📄 Facture
+            </Link>
+            <Link href={`/ventes/${lastSaleId}/ticket`} className="btn-secondary text-center">
+              🧾 Ticket / reçu
+            </Link>
+          </div>
         )}
 
         <label className="flex items-center justify-between gap-2 text-xs text-neutral-500">
@@ -475,6 +481,7 @@ export default function VentesPage() {
             <option value="invoice">Facture A4</option>
             <option value="ticket80">Ticket 80 mm</option>
             <option value="ticket58">Ticket 58 mm</option>
+            <option value="recuA5">Reçu A5 (imprimante normale)</option>
             <option value="none">Rien</option>
           </select>
         </label>

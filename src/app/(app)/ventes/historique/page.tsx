@@ -57,6 +57,7 @@ export default function SalesHistoryPage() {
               <th>Client</th>
               <th>Paiement</th>
               <th>Vendeur</th>
+              <th></th>
               <th className="text-right">Total</th>
             </tr>
           </thead>
@@ -83,6 +84,16 @@ export default function SalesHistoryPage() {
                   <td>{s.clientName || "-"}</td>
                   <td>{s.paymentMethod}</td>
                   <td>{s.user?.name || "-"}</td>
+                  <td>
+                    <Link
+                      href={`/ventes/${s.id}/ticket`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                      title="Ticket de caisse ou reçu"
+                    >
+                      🧾 Ticket
+                    </Link>
+                  </td>
                   <td className="text-right font-medium">
                     {s.cancelledAt && (
                       <span className="mr-2 inline-block rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300">
@@ -104,7 +115,7 @@ export default function SalesHistoryPage() {
                 </tr>
                 {expanded === s.id && (
                   <tr>
-                    <td colSpan={6} className="bg-black/[0.02] dark:bg-white/[0.03]">
+                    <td colSpan={7} className="bg-black/[0.02] dark:bg-white/[0.03]">
                       <div className="p-2">
                         <table className="table-base">
                           <thead>
@@ -137,7 +148,7 @@ export default function SalesHistoryPage() {
             ))}
             {sales.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-neutral-500">
+                <td colSpan={7} className="py-6 text-center text-neutral-500">
                   Aucune vente enregistrée.
                 </td>
               </tr>

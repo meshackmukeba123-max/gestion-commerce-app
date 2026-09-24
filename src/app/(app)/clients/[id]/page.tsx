@@ -48,7 +48,7 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
   const [method, setMethod] = useState("MAGASIN");
   const [note, setNote] = useState("");
   const [paying, setPaying] = useState(false);
-  const [payMessage, setPayMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [payMessage, setPayMessage] = useState<{ type: "success" | "error"; text: string; paymentId?: string } | null>(null);
 
   const load = useCallback(() => {
     apiGet<CustomerDetail>(`/api/customers/${id}`)
@@ -63,8 +63,8 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
     setPaying(true);
     setPayMessage(null);
     try {
-      await apiPost(`/api/customers/${id}/payments`, { amount: Number(amount), method, note: note || undefined });
-      setPayMessage({ type: "success", text: `Paiement de ${Number(amount).toLocaleString("fr-FR")} enregistré.` });
+      const payment = await apiPost<{ id: string }>(`/api/customers/${id}/payments`, { amount: Number(amount), method, note: note || undefined });
+      setPayMessage({ type: "success", text: `Paiement de ${Number(amount).toLocaleString("fr-FR")} enregistré.`, paymentId: payment.id });
       setAmount("");
       setNote("");
       load();
@@ -187,7 +187,14 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
             </>
           )}
           {payMessage && (
-            <p className={`text-sm ${payMessage.type === "success" ? "text-emerald-600" : "text-red-600"}`}>{payMessage.text}</p>
+            <p className={`text-sm ${payMessage.type === "success" ? "text-emerald-600" : "text-red-600"}`}>
+              {payMessage.text}{" "}
+              {payMessage.paymentId && (
+                <Link href={`/clients/${id}/recu/${payMessage.paymentId}`} className="font-semibold underline">
+                  🧾 Imprimer le reçu
+                </Link>
+              )}
+            </p>
           )}
         </form>
       </div>
@@ -251,7 +258,16 @@ export default function CustomerPage({ params }: { params: Promise<{ id: string 
                   </td>
                   <td>{METHODS.find((m) => m.value === p.method)?.label ?? p.method}</td>
                   <td>{p.user?.name ?? "-"}</td>
-                  <td className="text-right font-medium">{fmt(p.amount)}</td>
+                  <td className="text-right font-medium">
+                    {fmt(p.amount)}
+                    <Link
+                      href={`/clients/${id}/recu/${p.id}`}
+                      className="ml-2 text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+                      title="Reçu de paiement"
+                    >
+                      🧾
+                    </Link>
+                  </td>
                 </tr>
               ))}
               {customer.payments.length === 0 && (
