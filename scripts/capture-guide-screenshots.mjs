@@ -8,11 +8,16 @@ const BASE_URL = process.env.GUIDE_BASE_URL || "https://gestion-commerce-app.ver
 const EMAIL = process.env.GUIDE_EMAIL || "admin@demo.com";
 const PASSWORD = process.env.GUIDE_PASSWORD || "demo1234";
 
+// Captures « simples » de la page Aide. Les captures qui demandent des données préparées (fiche client,
+// facture avec retour, fenêtre de retour, inventaire en cours) et les positions des repères numérotés de
+// src/app/(app)/aide/page.tsx ont été produites sur les données de démonstration (npm run db:seed) :
+// si l'interface change, pensez à revérifier la position des repères.
 const PAGES = [
   { path: "/dashboard", file: "dashboard.png", fullPage: true },
-  { path: "/ventes", file: "vente.png", clipHeight: 520 },
-  { path: "/stock", file: "stock.png", clipHeight: 460 },
-  { path: "/utilisateurs", file: "utilisateurs.png", clipHeight: 420 },
+  { path: "/ventes", file: "vente.png", clipHeight: 690 },
+  { path: "/stock", file: "stock.png", clipHeight: 454 },
+  { path: "/utilisateurs", file: "utilisateurs.png", clipHeight: 411 },
+  { path: "/clients", file: "clients.png", clipHeight: 392 },
 ];
 
 async function main() {
