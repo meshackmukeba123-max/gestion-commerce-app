@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { loginSchema, productSchema, saleSchema, expenseSchema, mobileMoneyChargeSchema } from "./validators";
+import { loginSchema, productSchema, saleSchema, expenseSchema, mobileMoneyChargeSchema, cancelSaleSchema } from "./validators";
 
 describe("loginSchema", () => {
   it("accepte un email et un mot de passe valides", () => {
@@ -91,5 +91,17 @@ describe("mobileMoneyChargeSchema", () => {
   it("refuse un montant négatif", () => {
     const result = mobileMoneyChargeSchema.safeParse({ provider: "MOCK", phone: "0812345678", amount: -5 });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("cancelSaleSchema", () => {
+  it("exige un motif d'annulation", () => {
+    expect(cancelSaleSchema.safeParse({ reason: "  " }).success).toBe(false);
+    expect(cancelSaleSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("accepte un motif et le nettoie", () => {
+    const result = cancelSaleSchema.safeParse({ reason: "  Retour client  " });
+    expect(result.success && result.data.reason).toBe("Retour client");
   });
 });

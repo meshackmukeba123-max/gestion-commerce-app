@@ -21,6 +21,7 @@ export type InvoiceData = {
   subtotal: number;
   taxAmount: number;
   total: number;
+  cancelled?: { at: Date; reason: string | null } | null;
 };
 
 export function buildInvoicePdf(data: InvoiceData) {
@@ -62,6 +63,13 @@ export function buildInvoicePdf(data: InvoiceData) {
   doc.setFontSize(10);
   doc.text(`N° ${data.invoiceNumber}`, 555, 68, { align: "right" });
   doc.text(data.createdAt.toLocaleString("fr-FR"), 555, 82, { align: "right" });
+  if (data.cancelled) {
+    doc.setTextColor(200, 30, 30);
+    doc.setFont("helvetica", "bold");
+    doc.text(`ANNULÉE le ${data.cancelled.at.toLocaleString("fr-FR")}`, 555, 96, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+  }
 
   y = Math.max(y, 96) + 14;
   doc.setDrawColor(200);
@@ -120,6 +128,10 @@ export function buildInvoicePdf(data: InvoiceData) {
   y += 16;
   doc.setTextColor(120);
   doc.text("Facture générée électroniquement — ne nécessite pas de signature.", 40, y);
+  if (data.cancelled?.reason) {
+    y += 12;
+    doc.text(`Motif d'annulation : ${data.cancelled.reason}`, 40, y);
+  }
 
   return Buffer.from(doc.output("arraybuffer"));
 }

@@ -52,6 +52,7 @@ model User {
 
   memberships    StoreMembership[]
   sales          Sale[]          @relation("SoldBy")
+  cancelledSales Sale[]          @relation("CancelledBy")
   stockMovements StockMovement[] @relation("MovedBy")
 }
 
@@ -203,10 +204,16 @@ model Sale {
   offlineId     String?     @unique
   invoiceNumber String?     @unique
   createdAt     DateTime    @default(now())
+  // Annulation : la vente reste en base (traçabilité, numérotation des factures sans trou)
+  // mais est exclue du chiffre d'affaires, et son stock est réintégré.
+  cancelledAt   DateTime?
+  cancelledById String?
+  cancelReason  String?
 
-  store Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  user  User?      @relation("SoldBy", fields: [userId], references: [id])
-  items SaleItem[]
+  store       Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user        User?      @relation("SoldBy", fields: [userId], references: [id])
+  cancelledBy User?      @relation("CancelledBy", fields: [cancelledById], references: [id])
+  items       SaleItem[]
 
   @@index([storeId, createdAt])
 }

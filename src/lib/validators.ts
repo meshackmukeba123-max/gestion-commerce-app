@@ -40,6 +40,10 @@ export const saleSchema = z.object({
   createdAt: z.string().optional(),
 });
 
+export const cancelSaleSchema = z.object({
+  reason: z.string().trim().min(3, "Indiquez le motif de l'annulation"),
+});
+
 export const expenseSchema = z.object({
   category: z.enum([
     "LOYER",

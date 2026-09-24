@@ -27,6 +27,9 @@ mobile money.
   d'expiration (utile pour une pharmacie), scan et impression de codes-barres/QR.
 - **Vente en caisse (POS)** : recherche ou scan produit, panier, paiement espèces / carte /
   virement / mobile money, calcul automatique de la taxe.
+- **Annulation de ventes** (Gestionnaire/Administrateur) : avec motif obligatoire, les articles
+  sont remis en stock, la vente sort du chiffre d'affaires et la facture reste consultable avec
+  la mention « annulée » (numérotation sans trou, traçabilité complète).
 - **Tableau de bord financier** : chiffre d'affaires, dépenses, bénéfice net, graphique
   d'évolution, rapports mensuels/annuels exportables en **PDF** et **Excel**.
 - **Multi-boutiques** : un même compte peut gérer plusieurs points de vente, chacun avec son
@@ -172,6 +175,7 @@ npm test
 | Fonctionnalité | Vendeur | Gestionnaire | Administrateur |
 |---|:---:|:---:|:---:|
 | Effectuer une vente | ✅ | ✅ | ✅ |
+| Annuler une vente (remise en stock) | ❌ | ✅ | ✅ |
 | Consulter le stock | ✅ | ✅ | ✅ |
 | Modifier le stock / produits | ❌ | ✅ | ✅ |
 | Finances, dépenses, rapports | ❌ | ✅ | ✅ |

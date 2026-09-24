@@ -5,7 +5,7 @@ export async function buildFinancialReport(storeId: string, from: Date, to: Date
   const [store, sales, expenses] = await Promise.all([
     db.store.findUniqueOrThrow({ where: { id: storeId } }),
     db.sale.findMany({
-      where: { storeId, createdAt: { gte: from, lte: to } },
+      where: { storeId, cancelledAt: null, createdAt: { gte: from, lte: to } },
       include: { items: { include: { product: true } } },
       orderBy: { createdAt: "asc" },
     }),

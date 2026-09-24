@@ -1,9 +1,11 @@
 "use client";
 
-import { use, useEffect, useState, Suspense } from "react";
+import { use, useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { apiGet } from "@/lib/api-client";
+import { apiGet, apiPost } from "@/lib/api-client";
+import { useSession } from "@/components/providers/SessionProvider";
+import { Modal } from "@/components/ui/Modal";
 
 type SaleDetail = {
   id: string;
@@ -16,6 +18,9 @@ type SaleDetail = {
   taxAmount: number;
   total: number;
   createdAt: string;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  cancelledBy: { name: string } | null;
   user: { name: string } | null;
   store: { name: string; address: string | null; phone: string | null; taxId: string | null; rccm: string | null; currency: string; taxRate: number };
   items: { quantity: number; unitPrice: number; total: number; product: { name: string; unit: string } }[];
@@ -25,12 +30,35 @@ function SaleDetail({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const [sale, setSale] = useState<SaleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { activeStore } = useSession();
+  const canCancel = activeStore.role === "ADMIN" || activeStore.role === "GESTIONNAIRE";
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     apiGet<SaleDetail>(`/api/sales/${id}`)
       .then(setSale)
       .catch(() => setError("Vente introuvable."));
   }, [id]);
+
+  useEffect(load, [load]);
+
+  async function confirmCancel() {
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await apiPost(`/api/sales/${id}/cancel`, { reason: cancelReason });
+      setCancelOpen(false);
+      setCancelReason("");
+      load();
+    } catch (e) {
+      setCancelError(e instanceof Error ? e.message : "Erreur lors de l'annulation");
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   useEffect(() => {
     if (!sale || searchParams.get("print") !== "1") return;
@@ -53,6 +81,11 @@ function SaleDetail({ id }: { id: string }) {
           <h1 className="text-xl font-semibold">Facture {sale.invoiceNumber ?? "—"}</h1>
         </div>
         <div className="flex gap-2">
+          {canCancel && !sale.cancelledAt && (
+            <button onClick={() => setCancelOpen(true)} className="btn-secondary text-red-600 dark:text-red-400">
+              Annuler la vente
+            </button>
+          )}
           <button onClick={() => window.print()} className="btn-secondary">
             🖨️ Imprimer
           </button>
@@ -64,6 +97,53 @@ function SaleDetail({ id }: { id: string }) {
         </div>
       </div>
       <h1 className="print-only text-xl font-semibold">Facture {sale.invoiceNumber ?? "—"}</h1>
+
+      {sale.cancelledAt && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+          <p className="font-semibold">Vente annulée le {new Date(sale.cancelledAt).toLocaleString("fr-FR")}</p>
+          <p>
+            {sale.cancelledBy && <>Par {sale.cancelledBy.name} · </>}
+            Motif : {sale.cancelReason ?? "-"}
+          </p>
+          <p className="text-xs opacity-80">Les articles ont été remis en stock. Cette vente n&apos;est plus comptée dans le chiffre d&apos;affaires.</p>
+        </div>
+      )}
+
+      <Modal open={cancelOpen} onClose={() => setCancelOpen(false)} title="Annuler cette vente">
+        <div className="space-y-3 text-sm">
+          <p>
+            Les articles seront remis en stock et la vente ne comptera plus dans le chiffre d&apos;affaires. La facture reste
+            consultable avec la mention « annulée ». Cette action est définitive.
+          </p>
+          {sale.paymentMethod !== "MAGASIN" && (
+            <p className="rounded-lg bg-amber-50 p-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+              Paiement {sale.paymentMethod} : le remboursement du client n&apos;est pas automatique, faites-le manuellement.
+            </p>
+          )}
+          <div>
+            <label className="label" htmlFor="cancel-reason">
+              Motif
+            </label>
+            <input
+              id="cancel-reason"
+              className="input"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Ex. erreur de saisie, retour client…"
+              autoFocus
+            />
+          </div>
+          {cancelError && <p className="text-red-600">{cancelError}</p>}
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setCancelOpen(false)} className="btn-secondary">
+              Retour
+            </button>
+            <button onClick={confirmCancel} disabled={cancelling || cancelReason.trim().length < 3} className="btn-danger">
+              {cancelling ? "Annulation…" : "Confirmer l'annulation"}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <div className="card space-y-4">
         <div className="flex items-start justify-between border-b border-black/10 pb-4 dark:border-white/10">

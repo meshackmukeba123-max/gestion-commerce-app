@@ -12,7 +12,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const sale = await db.sale.findUnique({
       where: { id },
-      include: { items: { include: { product: true } }, user: { select: { name: true } }, store: true },
+      include: {
+        items: { include: { product: true } },
+        user: { select: { name: true } },
+        cancelledBy: { select: { name: true } },
+        store: true,
+      },
     });
     if (!sale) throw new ApiError("Vente introuvable", 404);
     requireStoreAccess(session, sale.storeId, "ventes:read");
@@ -52,6 +57,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         subtotal: sale.subtotal,
         taxAmount: sale.taxAmount,
         total: sale.total,
+        cancelled: sale.cancelledAt ? { at: sale.cancelledAt, reason: sale.cancelReason } : null,
       });
       return new NextResponse(pdf, {
         headers: {

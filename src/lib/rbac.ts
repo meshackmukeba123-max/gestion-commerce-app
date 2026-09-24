@@ -10,6 +10,7 @@ const PERMISSIONS: Record<Role, string[]> = {
     "stock:write",
     "ventes:read",
     "ventes:write",
+    "ventes:cancel",
     "finances:read",
     "finances:write",
     "fournisseurs:read",

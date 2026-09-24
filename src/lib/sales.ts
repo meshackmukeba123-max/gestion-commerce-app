@@ -75,10 +75,16 @@ export async function createSale(input: SaleInput) {
     });
 
     for (const item of input.items) {
-      await tx.product.update({
-        where: { id: item.productId },
+      // Décrément conditionnel et atomique : si deux caisses vendent le dernier article en même
+      // temps, la seconde échoue au lieu de rendre le stock négatif.
+      const updated = await tx.product.updateMany({
+        where: { id: item.productId, storeId: input.storeId, quantity: { gte: item.quantity } },
         data: { quantity: { decrement: item.quantity } },
       });
+      if (updated.count === 0) {
+        const name = products.find((p) => p.id === item.productId)?.name ?? item.productId;
+        throw new ApiError(`Stock insuffisant pour ${name}`, 400);
+      }
       await tx.stockMovement.create({
         data: {
           storeId: input.storeId,
@@ -95,4 +101,42 @@ export async function createSale(input: SaleInput) {
   }, { timeout: 15000 });
 
   return sale;
+}
+
+/**
+ * Annule une vente : la marque comme annulée (elle reste visible, sa facture aussi) et réintègre
+ * les quantités vendues dans le stock. Ne peut être faite qu'une fois.
+ */
+export async function cancelSale(input: { saleId: string; userId: string; reason: string }) {
+  return db.$transaction(async (tx) => {
+    const sale = await tx.sale.findUnique({ where: { id: input.saleId }, include: { items: true } });
+    if (!sale) throw new ApiError("Vente introuvable", 404);
+
+    // Mise à jour conditionnelle : protège contre deux annulations simultanées de la même vente.
+    const claimed = await tx.sale.updateMany({
+      where: { id: sale.id, cancelledAt: null },
+      data: { cancelledAt: new Date(), cancelledById: input.userId, cancelReason: input.reason },
+    });
+    if (claimed.count === 0) throw new ApiError("Cette vente est déjà annulée", 409);
+
+    const label = sale.invoiceNumber ?? sale.id;
+    for (const item of sale.items) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { quantity: { increment: item.quantity } },
+      });
+      await tx.stockMovement.create({
+        data: {
+          storeId: sale.storeId,
+          productId: item.productId,
+          type: "ENTREE",
+          quantity: item.quantity,
+          reason: `Annulation vente ${label} : ${input.reason}`,
+          userId: input.userId,
+        },
+      });
+    }
+
+    return tx.sale.findUniqueOrThrow({ where: { id: sale.id } });
+  }, { timeout: 15000 });
 }

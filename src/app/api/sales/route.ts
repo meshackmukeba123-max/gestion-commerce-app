@@ -28,7 +28,11 @@ export async function GET(req: Request) {
             }
           : {}),
       },
-      include: { items: { include: { product: true } }, user: { select: { name: true } } },
+      include: {
+        items: { include: { product: true } },
+        user: { select: { name: true } },
+        cancelledBy: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
       take: 300,
     });

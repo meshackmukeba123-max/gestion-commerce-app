@@ -18,8 +18,8 @@ export async function GET(req: Request) {
 
     const [products, salesToday, sales14d, expenses30d] = await Promise.all([
       db.product.findMany({ where: { storeId, active: true } }),
-      db.sale.findMany({ where: { storeId, createdAt: { gte: startOfToday } } }),
-      db.sale.findMany({ where: { storeId, createdAt: { gte: start14 } }, select: { total: true, createdAt: true } }),
+      db.sale.findMany({ where: { storeId, cancelledAt: null, createdAt: { gte: startOfToday } } }),
+      db.sale.findMany({ where: { storeId, cancelledAt: null, createdAt: { gte: start14 } }, select: { total: true, createdAt: true } }),
       db.expense.aggregate({
         where: { storeId, date: { gte: new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()) } },
         _sum: { amount: true },
