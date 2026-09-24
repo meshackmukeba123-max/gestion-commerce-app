@@ -258,6 +258,19 @@ export default function GuidePage() {
             était chargée avant la coupure. Les clients, retours et inventaires demandent une connexion.
           </li>
           <li>
+            <b>Que commander ?</b> Stock → « À réapprovisionner » calcule, d&apos;après le rythme de vos ventes, combien de
+            jours de stock il vous reste et la quantité à commander, puis crée la commande fournisseur en un clic.
+          </li>
+          <li>
+            <b>Ce qui rapporte le plus :</b> Finances → « Par produit » classe vos produits par chiffre d&apos;affaires ou
+            par marge et signale ceux dont la marge est trop faible.
+          </li>
+          <li>
+            <b>WhatsApp :</b> sur la fiche d&apos;un client qui vous doit de l&apos;argent, « Relancer par WhatsApp » prépare un
+            message de rappel poli ; sur une facture, « WhatsApp » envoie le récapitulatif au client. Vous relisez et
+            envoyez vous-même depuis WhatsApp.
+          </li>
+          <li>
             <b>Qui peut faire quoi :</b> les vendeurs vendent, voient le stock et gèrent les clients et leurs
             paiements ; les gestionnaires ajoutent les retours, annulations, inventaires, finances et fournisseurs ;
             les administrateurs ont tous les droits.

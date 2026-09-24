@@ -55,9 +55,14 @@ export default function StockPage() {
           Stock bas uniquement
         </label>
         {activeStore.role !== "VENDEUR" && (
-          <Link href="/stock/inventaires" className="btn-secondary ml-auto">
-            Inventaire physique
-          </Link>
+          <>
+            <Link href="/stock/reapprovisionnement" className="btn-secondary ml-auto">
+              À réapprovisionner
+            </Link>
+            <Link href="/stock/inventaires" className="btn-secondary">
+              Inventaire physique
+            </Link>
+          </>
         )}
         <Link href="/stock/mouvements" className={activeStore.role === "VENDEUR" ? "btn-secondary ml-auto" : "btn-secondary"}>
           Mouvements de stock

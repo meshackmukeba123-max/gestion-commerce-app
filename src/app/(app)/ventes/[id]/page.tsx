@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api-client";
 import { useSession } from "@/components/providers/SessionProvider";
 import { Modal } from "@/components/ui/Modal";
+import { whatsappLink, countryCodeFromStorePhone, formatAmount } from "@/lib/whatsapp";
 
 type SaleDetail = {
   id: string;
@@ -120,6 +121,21 @@ function SaleDetail({ id }: { id: string }) {
   const returnable = sale.items.some((i) => i.quantity - i.returnedQuantity > 0);
   const returnSubtotal = sale.items.reduce((sum, i) => sum + Number(returnQty[i.id] || 0) * i.unitPrice, 0);
   const returnEstimate = sale.subtotal > 0 ? returnSubtotal * (1 + sale.taxAmount / sale.subtotal) : 0;
+  const cur = sale.store.currency;
+  const whatsappInvoice = sale.cancelledAt
+    ? null
+    : whatsappLink(
+        sale.clientPhone,
+        [
+          `Bonjour${sale.clientName ? " " + sale.clientName : ""}, merci pour votre achat chez ${sale.store.name} !`,
+          `Facture ${sale.invoiceNumber ?? ""} du ${new Date(sale.createdAt).toLocaleDateString("fr-FR")} :`,
+          ...sale.items.map((i) => `- ${i.quantity} × ${i.product.name} : ${formatAmount(i.total, cur)}`),
+          `Total TTC : ${formatAmount(sale.total, cur)}`,
+          ...(returnedTotal > 0 ? [`Articles retournés : -${formatAmount(returnedTotal, cur)}`] : []),
+          ...(sale.balanceDue > 0 ? [`Reste à payer : ${formatAmount(sale.balanceDue, cur)}`] : []),
+        ].join("\n"),
+        countryCodeFromStorePhone(sale.store.phone)
+      );
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -140,6 +156,11 @@ function SaleDetail({ id }: { id: string }) {
             <button onClick={() => setCancelOpen(true)} className="btn-secondary text-red-600 dark:text-red-400">
               Annuler la vente
             </button>
+          )}
+          {whatsappInvoice && (
+            <a href={whatsappInvoice} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+              📱 WhatsApp
+            </a>
           )}
           <button onClick={() => window.print()} className="btn-secondary">
             🖨️ Imprimer
