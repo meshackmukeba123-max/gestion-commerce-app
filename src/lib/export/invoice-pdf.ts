@@ -1,6 +1,25 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
+/**
+ * Nombre au format français pour le PDF. Le séparateur de milliers de fr-FR est une espace fine
+ * insécable (U+202F) que la police Helvetica du PDF ne sait pas afficher (elle sortait « 3 / 5 0 0 ») :
+ * on la remplace par une espace normale.
+ */
+export function pdfNumber(n: number) {
+  return n.toLocaleString("fr-FR", { maximumFractionDigits: 2 }).replace(/[\u202F\u00A0]/g, " ");
+}
+
+/** Date et heure dans le fuseau de la boutique (le serveur, lui, est en UTC). */
+export function pdfDateTime(date: Date, timeZone?: string) {
+  const opts: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "medium" };
+  try {
+    return date.toLocaleString("fr-FR", { ...opts, timeZone }).replace(/[\u202F\u00A0]/g, " ");
+  } catch {
+    return date.toLocaleString("fr-FR", opts).replace(/[\u202F\u00A0]/g, " ");
+  }
+}
+
 export type InvoiceData = {
   invoiceNumber: string;
   createdAt: Date;
@@ -22,6 +41,8 @@ export type InvoiceData = {
   taxAmount: number;
   total: number;
   cancelled?: { at: Date; reason: string | null } | null;
+  /** Fuseau horaire de l'appareil qui télécharge la facture (ex. Africa/Lubumbashi). */
+  timeZone?: string;
   balanceDue?: number;
   returnedTotal?: number;
 };
@@ -29,7 +50,7 @@ export type InvoiceData = {
 export function buildInvoicePdf(data: InvoiceData) {
   const doc = new jsPDF({ unit: "pt" });
   const currency = data.store.currency;
-  const fmt = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+  const fmt = pdfNumber;
 
   let y = 44;
 
@@ -64,11 +85,11 @@ export function buildInvoicePdf(data: InvoiceData) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.text(`N° ${data.invoiceNumber}`, 555, 68, { align: "right" });
-  doc.text(data.createdAt.toLocaleString("fr-FR"), 555, 82, { align: "right" });
+  doc.text(pdfDateTime(data.createdAt, data.timeZone), 555, 82, { align: "right" });
   if (data.cancelled) {
     doc.setTextColor(200, 30, 30);
     doc.setFont("helvetica", "bold");
-    doc.text(`ANNULÉE le ${data.cancelled.at.toLocaleString("fr-FR")}`, 555, 96, { align: "right" });
+    doc.text(`ANNULÉE le ${pdfDateTime(data.cancelled.at, data.timeZone)}`, 555, 96, { align: "right" });
     doc.setFont("helvetica", "normal");
     doc.setTextColor(0);
   }
@@ -105,34 +126,40 @@ export function buildInvoicePdf(data: InvoiceData) {
     styles: { fontSize: 9 },
     headStyles: { fillColor: [31, 41, 55] },
     columnStyles: { 1: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
+    // Titres des colonnes chiffrées alignés à droite, comme les montants en dessous.
+    didParseCell: (cell) => {
+      if (cell.section === "head" && [1, 3, 4].includes(cell.column.index)) cell.cell.styles.halign = "right";
+    },
   });
   // @ts-expect-error jspdf-autotable augments doc with lastAutoTable at runtime
   y = doc.lastAutoTable.finalY + 20;
 
   const totalsX = 555;
+  // Libellés assez à gauche pour qu'un grand montant (ex. 12 345 678 CDF en gras) ne les touche pas.
+  const TOTALS_LABEL_X = 360;
   doc.setFontSize(10);
-  doc.text(`Sous-total`, 430, y);
+  doc.text(`Sous-total`, TOTALS_LABEL_X, y);
   doc.text(`${fmt(data.subtotal)} ${currency}`, totalsX, y, { align: "right" });
   y += 16;
-  doc.text(`Taxe (${data.store.taxRate}%)`, 430, y);
+  doc.text(`Taxe (${data.store.taxRate}%)`, TOTALS_LABEL_X, y);
   doc.text(`${fmt(data.taxAmount)} ${currency}`, totalsX, y, { align: "right" });
   y += 16;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text(`Total TTC`, 430, y);
+  doc.text(`Total TTC`, TOTALS_LABEL_X, y);
   doc.text(`${fmt(data.total)} ${currency}`, totalsX, y, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   if (data.returnedTotal && data.returnedTotal > 0) {
     y += 16;
-    doc.text(`Articles retournés`, 430, y);
+    doc.text(`Articles retournés`, TOTALS_LABEL_X, y);
     doc.text(`-${fmt(data.returnedTotal)} ${currency}`, totalsX, y, { align: "right" });
   }
   if (data.balanceDue && data.balanceDue > 0 && !data.cancelled) {
     y += 16;
     doc.setFont("helvetica", "bold");
     doc.setTextColor(200, 30, 30);
-    doc.text(`Reste à payer`, 430, y);
+    doc.text(`Reste à payer`, TOTALS_LABEL_X, y);
     doc.text(`${fmt(data.balanceDue)} ${currency}`, totalsX, y, { align: "right" });
     doc.setTextColor(0);
     doc.setFont("helvetica", "normal");
