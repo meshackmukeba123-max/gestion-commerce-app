@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { saleSchema } from "@/lib/validators";
 import { requireSession, requireStoreAccess, getStoreIdParam, handleApiError, ApiError } from "@/lib/api-helpers";
 import { createSale } from "@/lib/sales";
+import { roleForStore } from "@/lib/rbac";
 
 export const runtime = "nodejs";
 
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
     const parsed = saleSchema.safeParse(body);
     if (!parsed.success) throw new ApiError(parsed.error.issues[0]?.message ?? "Données invalides", 400);
 
-    const sale = await createSale({ ...parsed.data, storeId, userId: session.userId });
+    const sale = await createSale({ ...parsed.data, storeId, userId: session.userId, sellerRole: roleForStore(session, storeId) });
     return NextResponse.json(sale, { status: 201 });
   } catch (err) {
     return handleApiError(err);

@@ -10,8 +10,8 @@ import { syncPendingSales } from "@/lib/offline/sync";
 import { Modal } from "@/components/ui/Modal";
 import { CustomerForm, type CustomerFormValues } from "@/components/clients/CustomerForm";
 
-type Product = { id: string; name: string; barcode: string | null; sku: string | null; sellPrice: number; quantity: number; unit: string };
-type CartItem = { productId: string; name: string; unitPrice: number; quantity: number; maxQuantity: number };
+type Product = { id: string; name: string; barcode: string | null; sku: string | null; sellPrice: number; costPrice: number; quantity: number; unit: string };
+type CartItem = { productId: string; name: string; unitPrice: number; catalogPrice: number; costPrice: number; quantity: number; maxQuantity: number };
 type PaymentMethod = "MAGASIN" | "MOBILE_MONEY" | "CARTE" | "VIREMENT";
 type Customer = { id: string; name: string; phone: string | null; creditLimit: number | null; balance: number };
 type PrintMode = "invoice" | "ticket80" | "ticket58" | "recuA5" | "none";
@@ -125,9 +125,33 @@ export default function VentesPage() {
         return cart.map((c) => (c.productId === p.id ? { ...c, quantity: c.quantity + 1 } : c));
       }
       if (p.quantity <= 0) return cart;
-      return [...cart, { productId: p.id, name: p.name, unitPrice: p.sellPrice, quantity: 1, maxQuantity: p.quantity }];
+      return [
+        ...cart,
+        { productId: p.id, name: p.name, unitPrice: p.sellPrice, catalogPrice: p.sellPrice, costPrice: p.costPrice, quantity: 1, maxQuantity: p.quantity },
+      ];
     });
     setQuery("");
+  }
+
+  /**
+   * Entrée dans la recherche : un lecteur de codes-barres USB « tape » le code puis Entrée. On ajoute
+   * le produit dont le code-barres ou la référence correspond exactement, sinon l'unique résultat affiché.
+   */
+  function onSearchEnter() {
+    const code = query.trim();
+    if (!code) return;
+    const exact = products.find((p) => p.barcode === code || p.sku?.toLowerCase() === code.toLowerCase());
+    const target = exact ?? (filtered.length === 1 ? filtered[0] : null);
+    if (target) {
+      addToCart(target);
+      if (target.quantity <= 0) setMessage({ type: "error", text: `${target.name} est en rupture de stock` });
+    } else {
+      setMessage({ type: "error", text: `Aucun produit ne correspond exactement à « ${code} »` });
+    }
+  }
+
+  function updatePrice(productId: string, price: number) {
+    setCart((cart) => cart.map((c) => (c.productId === productId ? { ...c, unitPrice: Math.max(0, price) } : c)));
   }
 
   function onBarcodeDetected(code: string) {
@@ -145,6 +169,9 @@ export default function VentesPage() {
   function removeFromCart(productId: string) {
     setCart((cart) => cart.filter((c) => c.productId !== productId));
   }
+
+  // Prix négocié : réservé aux gestionnaires et administrateurs (le serveur refuse sinon).
+  const canNegotiate = activeStore.role === "ADMIN" || activeStore.role === "GESTIONNAIRE";
 
   const subtotal = cart.reduce((sum, c) => sum + c.unitPrice * c.quantity, 0);
   const taxAmount = Math.round(((subtotal * taxRate) / 100) * 100) / 100;
@@ -288,6 +315,13 @@ export default function VentesPage() {
             placeholder="Rechercher un produit ou scanner…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onSearchEnter();
+              }
+            }}
+            autoFocus
           />
           <BarcodeScannerButton onDetected={onBarcodeDetected} />
         </div>
@@ -316,20 +350,43 @@ export default function VentesPage() {
 
         <div className="space-y-2">
           {cart.map((c) => (
-            <div key={c.productId} className="flex items-center gap-2 text-sm">
-              <span className="flex-1">{c.name}</span>
-              <input
-                type="number"
-                min={1}
-                max={c.maxQuantity}
-                className="input w-16 px-2 py-1"
-                value={c.quantity}
-                onChange={(e) => updateQty(c.productId, Number(e.target.value))}
-              />
-              <span className="w-16 text-right">{(c.unitPrice * c.quantity).toLocaleString("fr-FR")}</span>
-              <button onClick={() => removeFromCart(c.productId)} className="text-red-600">
-                ✕
-              </button>
+            <div key={c.productId} className="space-y-1 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="flex-1">{c.name}</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={c.maxQuantity}
+                  aria-label={`Quantité ${c.name}`}
+                  className="input w-16 px-2 py-1"
+                  value={c.quantity}
+                  onChange={(e) => updateQty(c.productId, Number(e.target.value))}
+                />
+                <span className="w-16 text-right">{(c.unitPrice * c.quantity).toLocaleString("fr-FR")}</span>
+                <button onClick={() => removeFromCart(c.productId)} className="text-red-600" aria-label={`Retirer ${c.name}`}>
+                  ✕
+                </button>
+              </div>
+              {canNegotiate && (
+                <div className="flex items-center gap-2 pl-2 text-xs text-neutral-500">
+                  <label htmlFor={`price-${c.productId}`}>Prix unitaire</label>
+                  <input
+                    id={`price-${c.productId}`}
+                    type="number"
+                    min={0}
+                    step="any"
+                    className={`input w-24 px-2 py-0.5 text-xs ${c.unitPrice !== c.catalogPrice ? "border-amber-500" : ""}`}
+                    value={c.unitPrice}
+                    onChange={(e) => updatePrice(c.productId, Number(e.target.value))}
+                  />
+                  {c.unitPrice !== c.catalogPrice && (
+                    <button type="button" className="underline" onClick={() => updatePrice(c.productId, c.catalogPrice)}>
+                      catalogue : {c.catalogPrice.toLocaleString("fr-FR")}
+                    </button>
+                  )}
+                  {c.unitPrice < c.costPrice && <span className="font-medium text-red-600">sous le prix d&apos;achat !</span>}
+                </div>
+              )}
             </div>
           ))}
         </div>
