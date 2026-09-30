@@ -37,6 +37,9 @@ mobile money.
   acompte ou paiement différé depuis la caisse, suivi du « reste dû » par facture, encaissement
   des remboursements (répartis automatiquement sur les dettes les plus anciennes). Le total des
   créances apparaît sur le tableau de bord et dans les rapports.
+- **Guide d'utilisation en PDF** : page Aide → « Télécharger le guide (PDF) » (13 pages, captures
+  annotées, sommaire). Le PDF est généré à partir du même contenu que la page Aide
+  (`src/lib/guide-content.ts`), les deux restent donc toujours identiques.
 - **Prix négocié** (Gestionnaire/Administrateur) : prix unitaire modifiable dans le panier, avec
   rappel du prix catalogue et alerte si le prix passe sous le prix d'achat. Le serveur impose le
   prix catalogue aux vendeurs (une vente hors connexion est acceptée si son prix reste au moins
