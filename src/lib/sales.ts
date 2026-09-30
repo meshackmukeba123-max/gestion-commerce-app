@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { computeTax, returnTaxAmount, round2 } from "@/lib/tax";
 import { computeBalanceDue } from "@/lib/credit";
 import { ApiError } from "@/lib/api-helpers";
+import { checkUnitPrice, type PricingRole } from "@/lib/pricing";
 
 type SaleInput = {
   storeId: string;
@@ -15,6 +16,8 @@ type SaleInput = {
   createdAt?: string;
   customerId?: string;
   amountPaid?: number;
+  /** Rôle de la personne qui vend : un vendeur ne peut vendre qu'au prix du catalogue. */
+  sellerRole?: PricingRole | null;
 };
 
 /** Crée une vente, décrémente le stock de chaque article et calcule la taxe. Idempotent sur offlineId. */
@@ -59,6 +62,8 @@ export async function createSale(input: SaleInput) {
   for (const item of input.items) {
     const product = products.find((p) => p.id === item.productId);
     if (!product) throw new ApiError(`Produit ${item.productId} introuvable dans cette boutique`, 404);
+    const priceError = checkUnitPrice(input.sellerRole ?? null, Boolean(input.offlineId), item.unitPrice, product);
+    if (priceError) throw new ApiError(priceError, 403);
     if (product.quantity < item.quantity) {
       throw new ApiError(`Stock insuffisant pour ${product.name} (disponible: ${product.quantity})`, 400);
     }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { verifyPassword, signSession, setSessionCookie } from "@/lib/auth";
+import { verifyPassword, signSession, setSessionCookie, passwordFingerprint } from "@/lib/auth";
 import { loginSchema } from "@/lib/validators";
 import { handleApiError, ApiError } from "@/lib/api-helpers";
 
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       name: user.name,
       memberships,
       activeStoreId: memberships[0].storeId,
+      pwd: passwordFingerprint(user.passwordHash),
     });
 
     await setSessionCookie(token);

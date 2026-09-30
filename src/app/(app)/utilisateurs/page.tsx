@@ -15,6 +15,34 @@ export default function UsersPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "VENDEUR" as const });
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [resetFor, setResetFor] = useState<Membership | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetMessage, setResetMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  /** Exécute une action sur un membre et affiche l'erreur éventuelle (ex. retirer ses propres droits). */
+  async function run(action: () => Promise<unknown>) {
+    setActionError(null);
+    try {
+      await action();
+    } catch (err) {
+      setActionError(err instanceof ApiClientError ? err.message : "Erreur");
+    }
+    load();
+  }
+
+  async function resetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetFor) return;
+    setResetMessage(null);
+    try {
+      await apiPatch(`/api/users/${resetFor.userId}?storeId=${activeStore.storeId}`, { password: newPassword });
+      setResetMessage({ type: "success", text: `Mot de passe de ${resetFor.user.name} réinitialisé. Communiquez-le-lui : ses sessions ouvertes sont fermées.` });
+      setNewPassword("");
+    } catch (err) {
+      setResetMessage({ type: "error", text: err instanceof ApiClientError ? err.message : "Erreur" });
+    }
+  }
 
   const load = useCallback(() => {
     apiGet<Membership[]>(withStore("/api/users", activeStore.storeId)).then(setMembers);
@@ -35,20 +63,17 @@ export default function UsersPage() {
     }
   }
 
-  async function changeRole(userId: string, role: string) {
-    await apiPatch(`/api/users/${userId}?storeId=${activeStore.storeId}`, { role });
-    load();
+  function changeRole(userId: string, role: string) {
+    return run(() => apiPatch(`/api/users/${userId}?storeId=${activeStore.storeId}`, { role }));
   }
 
-  async function toggleActive(userId: string, active: boolean) {
-    await apiPatch(`/api/users/${userId}?storeId=${activeStore.storeId}`, { active });
-    load();
+  function toggleActive(userId: string, active: boolean) {
+    return run(() => apiPatch(`/api/users/${userId}?storeId=${activeStore.storeId}`, { active }));
   }
 
-  async function removeMember(userId: string) {
+  function removeMember(userId: string) {
     if (!confirm("Retirer cet utilisateur de la boutique ?")) return;
-    await apiDelete(`/api/users/${userId}?storeId=${activeStore.storeId}`);
-    load();
+    return run(() => apiDelete(`/api/users/${userId}?storeId=${activeStore.storeId}`));
   }
 
   return (
@@ -59,6 +84,8 @@ export default function UsersPage() {
           + Ajouter un utilisateur
         </button>
       </div>
+
+      {actionError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{actionError}</p>}
 
       <div className="card overflow-x-auto p-0">
         <table className="table-base">
@@ -93,7 +120,17 @@ export default function UsersPage() {
                     {m.user.active ? "Actif" : "Désactivé"}
                   </button>
                 </td>
-                <td>
+                <td className="space-x-3 whitespace-nowrap">
+                  <button
+                    onClick={() => {
+                      setResetFor(m);
+                      setResetMessage(null);
+                      setNewPassword("");
+                    }}
+                    className="text-emerald-700 hover:underline dark:text-emerald-400"
+                  >
+                    Mot de passe
+                  </button>
                   <button onClick={() => removeMember(m.userId)} className="text-red-600 hover:underline">
                     Retirer
                   </button>
@@ -117,7 +154,7 @@ export default function UsersPage() {
           </div>
           <div>
             <label className="label">Mot de passe temporaire *</label>
-            <input type="password" className="input" required minLength={6} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
+            <input type="password" className="input" required minLength={8} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
           </div>
           <div>
             <label className="label">Rôle</label>
@@ -132,6 +169,26 @@ export default function UsersPage() {
           <button type="submit" className="btn-primary w-full">
             Créer l&apos;utilisateur
           </button>
+        </form>
+      </Modal>
+      <Modal open={resetFor !== null} onClose={() => setResetFor(null)} title={`Nouveau mot de passe — ${resetFor?.user.name ?? ""}`}>
+        <form onSubmit={resetPassword} className="space-y-3 text-sm">
+          <p className="text-neutral-500">
+            À utiliser si la personne a oublié son mot de passe. Elle devra se reconnecter avec le nouveau, puis le changer
+            dans « Mon compte ».
+          </p>
+          <div>
+            <label className="label" htmlFor="new-password">
+              Nouveau mot de passe (8 caractères minimum)
+            </label>
+            <input id="new-password" type="text" className="input" minLength={8} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="off" />
+          </div>
+          {resetMessage && <p className={resetMessage.type === "success" ? "text-emerald-600" : "text-red-600"}>{resetMessage.text}</p>}
+          <div className="flex justify-end">
+            <button type="submit" className="btn-primary" disabled={newPassword.length < 8}>
+              Réinitialiser
+            </button>
+          </div>
         </form>
       </Modal>
     </div>

@@ -5,6 +5,22 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Mot de passe requis"),
 });
 
+export const newPasswordField = z
+  .string()
+  .min(8, "Le mot de passe doit contenir au moins 8 caractères")
+  .max(200, "Mot de passe trop long");
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Mot de passe actuel requis"),
+  newPassword: newPasswordField,
+});
+
+export const memberUpdateSchema = z.object({
+  role: z.enum(["ADMIN", "GESTIONNAIRE", "VENDEUR"]).optional(),
+  active: z.boolean().optional(),
+  password: newPasswordField.optional(),
+});
+
 export const productSchema = z.object({
   name: z.string().min(1, "Nom requis"),
   sku: z.string().optional(),
@@ -134,7 +150,7 @@ export const storeSchema = z.object({
 export const userInviteSchema = z.object({
   name: z.string().min(1, "Nom requis"),
   email: z.string().email("Email invalide"),
-  password: z.string().min(6, "6 caractères minimum"),
+  password: newPasswordField,
   role: z.enum(["ADMIN", "GESTIONNAIRE", "VENDEUR"]),
   storeId: z.string().min(1),
 });

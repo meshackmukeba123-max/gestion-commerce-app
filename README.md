@@ -37,6 +37,17 @@ mobile money.
   acompte ou paiement différé depuis la caisse, suivi du « reste dû » par facture, encaissement
   des remboursements (répartis automatiquement sur les dettes les plus anciennes). Le total des
   créances apparaît sur le tableau de bord et dans les rapports.
+- **Prix négocié** (Gestionnaire/Administrateur) : prix unitaire modifiable dans le panier, avec
+  rappel du prix catalogue et alerte si le prix passe sous le prix d'achat. Le serveur impose le
+  prix catalogue aux vendeurs (une vente hors connexion est acceptée si son prix reste au moins
+  égal au prix d'achat).
+- **Lecteur de codes-barres USB** : à la caisse, le code lu (suivi de Entrée) ajoute directement
+  le produit au panier ; un second passage augmente la quantité.
+- **Mon compte** (menu du profil) : changement de son mot de passe (les autres appareils connectés
+  sont déconnectés). L'administrateur peut aussi réinitialiser le mot de passe d'un employé
+  (Utilisateurs → « Mot de passe »).
+- **Sécurité des sessions** : un compte désactivé ou retiré perd l'accès immédiatement, et un
+  changement de rôle s'applique sans reconnexion.
 - **Clôture de caisse** (menu « Clôture de caisse », tous les rôles) : encaissements du jour par
   mode de paiement (ventes, dettes remboursées, sommes rendues aux clients), crédit accordé, retours ;
   saisie du fond de caisse et des espèces comptées, calcul des espèces attendues et de l'écart,

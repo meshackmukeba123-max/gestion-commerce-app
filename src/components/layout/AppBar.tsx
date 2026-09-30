@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -78,6 +79,13 @@ export function AppBar() {
                   <p className="truncate text-xs text-neutral-500">{session.email}</p>
                 </div>
                 <div className="my-1 border-t border-black/10 dark:border-white/10" />
+                <Link
+                  href="/compte"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full rounded-lg px-2.5 py-1.5 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  Mon compte / mot de passe
+                </Link>
                 <button onClick={logout} className="w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-red-600 hover:bg-black/5 dark:hover:bg-white/10">
                   Déconnexion
                 </button>

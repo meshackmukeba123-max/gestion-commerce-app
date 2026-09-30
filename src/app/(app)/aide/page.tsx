@@ -258,6 +258,19 @@ export default function GuidePage() {
             était chargée avant la coupure. Les clients, retours et inventaires demandent une connexion.
           </li>
           <li>
+            <b>Lecteur de codes-barres :</b> à la caisse, cliquez dans la recherche et scannez : le produit s&apos;ajoute
+            tout seul au panier (scannez-le de nouveau pour augmenter la quantité).
+          </li>
+          <li>
+            <b>Prix négocié :</b> les gestionnaires et administrateurs peuvent changer le prix d&apos;un article dans le
+            panier ; une alerte s&apos;affiche s&apos;il passe sous le prix d&apos;achat. Les vendeurs vendent au prix du
+            catalogue.
+          </li>
+          <li>
+            <b>Mot de passe :</b> menu du profil (vos initiales, en haut à droite) → « Mon compte » pour le changer. Un
+            employé a oublié le sien ? L&apos;administrateur le réinitialise dans Utilisateurs → « Mot de passe ».
+          </li>
+          <li>
             <b>Clôture de caisse :</b> en fin de journée, ouvrez « Clôture de caisse », saisissez le fond de caisse du matin
             et les espèces comptées dans le tiroir : l&apos;application calcule ce qui devrait y être et affiche l&apos;écart.
             Enregistrez la clôture pour garder une trace (historique en bas de page).
