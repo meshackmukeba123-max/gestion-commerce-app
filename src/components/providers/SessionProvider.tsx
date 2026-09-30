@@ -15,6 +15,8 @@ type Ctx = {
   session: Session;
   activeStore: Membership;
   switchStore: (storeId: string) => Promise<void>;
+  /** Met à jour le nom et l'email affichés après une modification du profil. */
+  updateProfile: (profile: { name: string; email: string }) => void;
 };
 
 const SessionContext = createContext<Ctx | null>(null);
@@ -34,11 +36,15 @@ export function SessionProvider({ initialSession, children }: { initialSession: 
     }
   }, []);
 
+  const updateProfile = useCallback((profile: { name: string; email: string }) => {
+    setSession((s) => ({ ...s, ...profile }));
+  }, []);
+
   const activeStore =
     session.memberships.find((m) => m.storeId === session.activeStoreId) ?? session.memberships[0];
 
   return (
-    <SessionContext.Provider value={{ session, activeStore, switchStore }}>{children}</SessionContext.Provider>
+    <SessionContext.Provider value={{ session, activeStore, switchStore, updateProfile }}>{children}</SessionContext.Provider>
   );
 }
 

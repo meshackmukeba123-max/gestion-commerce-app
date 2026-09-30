@@ -18,7 +18,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const parsed = memberUpdateSchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) throw new ApiError(parsed.error.issues[0]?.message ?? "Données invalides", 400);
-    const { role, active, password } = parsed.data;
+    const { role, active, password, name, email } = parsed.data;
 
     const membership = await db.storeMembership.findUnique({ where: { userId_storeId: { userId: id, storeId } } });
     if (!membership) throw new ApiError("Utilisateur introuvable dans cette boutique", 404);
@@ -33,6 +33,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     if (typeof active === "boolean") {
       await db.user.update({ where: { id }, data: { active } });
+    }
+    if (email) {
+      const taken = await db.user.findUnique({ where: { email } });
+      if (taken && taken.id !== id) throw new ApiError("Cet email est déjà utilisé par un autre compte", 409);
+    }
+    if (name || email) {
+      await db.user.update({ where: { id }, data: { ...(name ? { name } : {}), ...(email ? { email } : {}) } });
     }
     if (password) {
       // Réinitialisation par l'administrateur : les sessions ouvertes de cet utilisateur sont invalidées.

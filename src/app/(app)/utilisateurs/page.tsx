@@ -10,7 +10,32 @@ type Membership = { userId: string; role: "ADMIN" | "GESTIONNAIRE" | "VENDEUR"; 
 const ROLE_LABEL = { ADMIN: "Administrateur", GESTIONNAIRE: "Gestionnaire", VENDEUR: "Vendeur" };
 
 export default function UsersPage() {
-  const { activeStore } = useSession();
+  const { activeStore, session, updateProfile } = useSession();
+  const [editFor, setEditFor] = useState<Membership | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+
+  function openEdit(m: Membership) {
+    setEditFor(m);
+    setEditName(m.user.name);
+    setEditEmail(m.user.email);
+    setEditError(null);
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editFor) return;
+    setEditError(null);
+    try {
+      await apiPatch(`/api/users/${editFor.userId}?storeId=${activeStore.storeId}`, { name: editName, email: editEmail });
+      if (editFor.userId === session.userId) updateProfile({ name: editName.trim(), email: editEmail.trim().toLowerCase() });
+      setEditFor(null);
+      load();
+    } catch (err) {
+      setEditError(err instanceof ApiClientError ? err.message : "Erreur");
+    }
+  }
   const [members, setMembers] = useState<Membership[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "VENDEUR" as const });
@@ -121,6 +146,9 @@ export default function UsersPage() {
                   </button>
                 </td>
                 <td className="space-x-3 whitespace-nowrap">
+                  <button onClick={() => openEdit(m)} className="text-emerald-700 hover:underline dark:text-emerald-400">
+                    Modifier
+                  </button>
                   <button
                     onClick={() => {
                       setResetFor(m);
@@ -171,6 +199,29 @@ export default function UsersPage() {
           </button>
         </form>
       </Modal>
+      <Modal open={editFor !== null} onClose={() => setEditFor(null)} title="Modifier l'utilisateur">
+        <form onSubmit={saveEdit} className="space-y-3 text-sm">
+          <div>
+            <label className="label" htmlFor="edit-name">
+              Nom
+            </label>
+            <input id="edit-name" className="input" required maxLength={100} value={editName} onChange={(e) => setEditName(e.target.value)} />
+          </div>
+          <div>
+            <label className="label" htmlFor="edit-email">
+              Email (identifiant de connexion)
+            </label>
+            <input id="edit-email" type="email" className="input" required value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+          </div>
+          {editError && <p className="text-red-600">{editError}</p>}
+          <div className="flex justify-end">
+            <button type="submit" className="btn-primary">
+              Enregistrer
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       <Modal open={resetFor !== null} onClose={() => setResetFor(null)} title={`Nouveau mot de passe — ${resetFor?.user.name ?? ""}`}>
         <form onSubmit={resetPassword} className="space-y-3 text-sm">
           <p className="text-neutral-500">
