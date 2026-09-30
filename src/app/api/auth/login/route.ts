@@ -15,8 +15,8 @@ export async function POST(req: Request) {
     }
     const { email, password } = parsed.data;
 
-    const user = await db.user.findUnique({
-      where: { email },
+    const user = await db.user.findFirst({
+      where: { email: { equals: email.trim(), mode: "insensitive" } },
       include: { memberships: { include: { store: true } } },
     });
 

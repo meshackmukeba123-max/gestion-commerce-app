@@ -15,7 +15,19 @@ export const changePasswordSchema = z.object({
   newPassword: newPasswordField,
 });
 
+const personName = z.string().trim().min(1, "Nom requis").max(100, "Nom trop long");
+const personEmail = z.string().trim().toLowerCase().email("Adresse email invalide");
+
+export const profileSchema = z.object({
+  name: personName,
+  email: personEmail,
+  /** Obligatoire pour changer d'email (l'email sert d'identifiant de connexion). */
+  currentPassword: z.string().optional(),
+});
+
 export const memberUpdateSchema = z.object({
+  name: personName.optional(),
+  email: personEmail.optional(),
   role: z.enum(["ADMIN", "GESTIONNAIRE", "VENDEUR"]).optional(),
   active: z.boolean().optional(),
   password: newPasswordField.optional(),

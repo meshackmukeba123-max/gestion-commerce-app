@@ -2,12 +2,43 @@
 
 import { useState } from "react";
 import { useSession } from "@/components/providers/SessionProvider";
-import { apiPost, ApiClientError } from "@/lib/api-client";
+import { apiPost, apiPatch, ApiClientError } from "@/lib/api-client";
 
 const ROLE_LABEL = { ADMIN: "Administrateur", GESTIONNAIRE: "Gestionnaire", VENDEUR: "Vendeur" };
 
 export default function AccountPage() {
-  const { session } = useSession();
+  const { session, updateProfile } = useSession();
+  const [name, setName] = useState(session.name);
+  const [email, setEmail] = useState(session.email);
+  const [profilePassword, setProfilePassword] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const emailChanged = email.trim().toLowerCase() !== session.email.toLowerCase();
+
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingProfile(true);
+    setProfileMessage(null);
+    try {
+      const updated = await apiPatch<{ name: string; email: string }>("/api/auth/profile", {
+        name,
+        email,
+        currentPassword: emailChanged ? profilePassword : undefined,
+      });
+      updateProfile(updated);
+      setName(updated.name);
+      setEmail(updated.email);
+      setProfilePassword("");
+      setProfileMessage({
+        type: "success",
+        text: emailChanged ? `Profil enregistré. Connectez-vous désormais avec ${updated.email}.` : "Profil enregistré.",
+      });
+    } catch (err) {
+      setProfileMessage({ type: "error", text: err instanceof ApiClientError ? err.message : "Erreur" });
+    } finally {
+      setSavingProfile(false);
+    }
+  }
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -39,10 +70,45 @@ export default function AccountPage() {
     <div className="max-w-xl space-y-6">
       <h1 className="text-xl font-semibold">Mon compte</h1>
 
+      <form onSubmit={saveProfile} className="card space-y-3">
+        <h2 className="text-sm font-semibold">Mon profil</h2>
+        <div>
+          <label className="label" htmlFor="profile-name">
+            Nom affiché
+          </label>
+          <input id="profile-name" className="input" required maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="label" htmlFor="profile-email">
+            Email (identifiant de connexion)
+          </label>
+          <input id="profile-email" type="email" className="input" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        {emailChanged && (
+          <div>
+            <label className="label" htmlFor="profile-password">
+              Mot de passe actuel (obligatoire pour changer d&apos;email)
+            </label>
+            <input
+              id="profile-password"
+              type="password"
+              className="input"
+              required
+              autoComplete="current-password"
+              value={profilePassword}
+              onChange={(e) => setProfilePassword(e.target.value)}
+            />
+          </div>
+        )}
+        {profileMessage && <p className={`text-sm ${profileMessage.type === "success" ? "text-emerald-600" : "text-red-600"}`}>{profileMessage.text}</p>}
+        <button type="submit" disabled={savingProfile || (name === session.name && !emailChanged)} className="btn-primary">
+          {savingProfile ? "Enregistrement…" : "Enregistrer mon profil"}
+        </button>
+      </form>
+
       <div className="card space-y-1 text-sm">
-        <p className="font-medium">{session.name}</p>
-        <p className="text-neutral-500">{session.email}</p>
-        <ul className="pt-2 text-neutral-500">
+        <p className="text-sm font-semibold">Mes boutiques</p>
+        <ul className="text-neutral-500">
           {session.memberships.map((m) => (
             <li key={m.storeId}>
               {m.storeName} — {ROLE_LABEL[m.role]}

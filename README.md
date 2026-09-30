@@ -43,9 +43,10 @@ mobile money.
   égal au prix d'achat).
 - **Lecteur de codes-barres USB** : à la caisse, le code lu (suivi de Entrée) ajoute directement
   le produit au panier ; un second passage augmente la quantité.
-- **Mon compte** (menu du profil) : changement de son mot de passe (les autres appareils connectés
-  sont déconnectés). L'administrateur peut aussi réinitialiser le mot de passe d'un employé
-  (Utilisateurs → « Mot de passe »).
+- **Mon compte** (menu du profil) : modification de son nom et de son email de connexion (le
+  mot de passe est demandé pour changer d'email), et changement de son mot de passe (les autres
+  appareils connectés sont déconnectés). L'administrateur peut aussi corriger le nom ou l'email
+  d'un employé (Utilisateurs → « Modifier ») et réinitialiser son mot de passe (« Mot de passe »).
 - **Sécurité des sessions** : un compte désactivé ou retiré perd l'accès immédiatement, et un
   changement de rôle s'applique sans reconnexion.
 - **Clôture de caisse** (menu « Clôture de caisse », tous les rôles) : encaissements du jour par

@@ -267,8 +267,9 @@ export default function GuidePage() {
             catalogue.
           </li>
           <li>
-            <b>Mot de passe :</b> menu du profil (vos initiales, en haut à droite) → « Mon compte » pour le changer. Un
-            employé a oublié le sien ? L&apos;administrateur le réinitialise dans Utilisateurs → « Mot de passe ».
+            <b>Mon compte :</b> menu du profil (vos initiales, en haut à droite) → « Mon compte » pour changer votre nom,
+            votre email de connexion ou votre mot de passe. L&apos;administrateur peut corriger le nom ou l&apos;email d&apos;un
+            employé (Utilisateurs → « Modifier ») et réinitialiser un mot de passe oublié (« Mot de passe »).
           </li>
           <li>
             <b>Clôture de caisse :</b> en fin de journée, ouvrez « Clôture de caisse », saisissez le fond de caisse du matin

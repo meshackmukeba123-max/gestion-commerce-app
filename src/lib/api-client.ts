@@ -1,6 +1,11 @@
 export class ApiClientError extends Error {}
 
 async function handle<T>(res: Response): Promise<T> {
+  // Session expirée, compte désactivé ou mot de passe changé ailleurs : retour à l'écran de connexion.
+  if (res.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+    return new Promise<T>(() => {});
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiClientError(data.error ?? `Erreur ${res.status}`);
   return data as T;
