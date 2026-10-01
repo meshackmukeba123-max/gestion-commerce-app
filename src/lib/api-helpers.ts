@@ -28,6 +28,14 @@ export function handleApiError(err: unknown) {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }
   console.error(err);
+  // Doublon en base (contrainte d'unicité Prisma P2002) : message clair plutôt que « Erreur serveur ».
+  if (typeof err === "object" && err !== null && (err as { code?: unknown }).code === "P2002") {
+    Sentry.captureException(err);
+    return NextResponse.json(
+      { error: "Cet enregistrement existe déjà (doublon). Réessayez ou contactez l'administrateur." },
+      { status: 409 },
+    );
+  }
   Sentry.captureException(err);
   return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
 }
