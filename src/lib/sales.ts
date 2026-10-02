@@ -70,13 +70,20 @@ export async function createSale(input: SaleInput) {
   }
 
   const sale = await db.$transaction(async (tx) => {
-    const updatedStore = await tx.store.update({
-      where: { id: input.storeId },
-      data: { invoiceCounter: { increment: 1 } },
-      select: { invoiceCounter: true },
-    });
     const invoiceYear = (input.createdAt ? new Date(input.createdAt) : new Date()).getFullYear();
-    const invoiceNumber = `FA-${invoiceYear}-${String(updatedStore.invoiceCounter).padStart(6, "0")}`;
+    // On saute les numéros déjà pris (par n'importe quelle boutique) : une base dont l'index
+    // d'unicité est encore global (ancien schéma) n'empêche ainsi plus l'encaissement.
+    let invoiceNumber = "";
+    for (;;) {
+      const updatedStore = await tx.store.update({
+        where: { id: input.storeId },
+        data: { invoiceCounter: { increment: 1 } },
+        select: { invoiceCounter: true },
+      });
+      invoiceNumber = `FA-${invoiceYear}-${String(updatedStore.invoiceCounter).padStart(6, "0")}`;
+      const taken = await tx.sale.findFirst({ where: { invoiceNumber }, select: { id: true } });
+      if (!taken) break;
+    }
 
     const created = await tx.sale.create({
       data: {
