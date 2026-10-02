@@ -214,7 +214,7 @@ model Sale {
   paymentMethod SaleChannel @default(MAGASIN)
   paymentRef    String?
   offlineId     String?     @unique
-  invoiceNumber String?     @unique
+  invoiceNumber String?
   createdAt     DateTime    @default(now())
   // Annulation : la vente reste en base (traçabilité, numérotation des factures sans trou)
   // mais est exclue du chiffre d'affaires, et son stock est réintégré.
@@ -236,6 +236,8 @@ model Sale {
   items       SaleItem[]
   returns     SaleReturn[]
 
+  // Numéro de facture unique PAR BOUTIQUE : chaque boutique a sa propre numérotation (FA-AAAA-000001…).
+  @@unique([storeId, invoiceNumber])
   @@index([storeId, createdAt])
   @@index([customerId])
 }
