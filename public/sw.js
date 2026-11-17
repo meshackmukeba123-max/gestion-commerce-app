@@ -1,4 +1,4 @@
-const CACHE_NAME = "gestion-commerce-v1";
+const CACHE_NAME = "gestion-commerce-v2";
 const APP_SHELL = ["/manifest.json", "/icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -30,6 +30,15 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone)).catch(() => {});
         return res;
       })
-      .catch(() => caches.match(req).then((cached) => cached || caches.match("/manifest.json")))
+      .catch(() =>
+        caches.match(req).then(
+          (cached) =>
+            cached ||
+            new Response("Hors ligne : reconnectez-vous pour accéder à cette page.", {
+              status: 503,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            })
+        )
+      )
   );
 });
