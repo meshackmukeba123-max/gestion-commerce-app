@@ -6,6 +6,19 @@ import { hashPassword } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
+/**
+ * Compte propriétaire protégé : défini par la variable d'environnement OWNER_EMAIL.
+ * Seul ce compte peut modifier ou retirer son propre accès ; les autres administrateurs ne le peuvent pas.
+ */
+async function assertNotProtected(sessionEmail: string, targetId: string) {
+  const owner = process.env.OWNER_EMAIL?.trim().toLowerCase();
+  if (!owner) return;
+  const target = await db.user.findUnique({ where: { id: targetId }, select: { email: true } });
+  if (target && target.email.toLowerCase() === owner && sessionEmail.toLowerCase() !== owner) {
+    throw new ApiError("Ce compte est protégé et ne peut être modifié que par son propriétaire", 403);
+  }
+}
+
 /** Modifie le rôle ou l'état actif d'un membre pour une boutique donnée (?storeId=). */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,6 +35,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const membership = await db.storeMembership.findUnique({ where: { userId_storeId: { userId: id, storeId } } });
     if (!membership) throw new ApiError("Utilisateur introuvable dans cette boutique", 404);
+    await assertNotProtected(session.email, id);
 
     // Un administrateur ne peut pas se retirer ses propres droits ni désactiver son compte (risque de blocage).
     if (id === session.userId && ((role && role !== "ADMIN") || active === false)) {
@@ -65,6 +79,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const membership = await db.storeMembership.findUnique({ where: { userId_storeId: { userId: id, storeId } } });
     if (!membership) throw new ApiError("Utilisateur introuvable dans cette boutique", 404);
+    await assertNotProtected(session.email, id);
     await db.storeMembership.delete({ where: { userId_storeId: { userId: id, storeId } } });
     return NextResponse.json({ ok: true });
   } catch (err) {
